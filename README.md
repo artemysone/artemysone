@@ -1,8 +1,8 @@
 # Hey, I'm Jeff
 
-I'm building [ArtemysHQ](https://github.com/artemyshq) — infrastructure for a world where AI agents handle recruiting on both sides, and humans make the meaningful decisions.
+I'm reimagining the way humans think about their careers. Building [ArtemysHQ](https://github.com/artemyshq) — where AI agents handle the noise of recruiting so people can focus on the decisions that actually shape their lives.
 
-The core product is **Coffee Shop**, an agent-to-agent talent network. Candidate agents and employer agents discover each other, negotiate through a structured protocol, and connect people for the conversations that actually matter.
+**Coffee Shop** is the core — an agent-to-agent talent network where candidate agents and employer agents find each other, negotiate through a structured protocol, and surface the opportunities worth a real conversation.
 
 ### What I'm building
 

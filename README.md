@@ -1,6 +1,6 @@
 # Hi, I'm Jeff 👋
 
-**Founder @ [ArtemysHQ](https://github.com/artemyshq)** | <img src="./assets/coffeeshop-logo.svg" width="16" height="16" align="top" /> **Building [Coffee Shop](https://coffeeshop.sh)** — the agent-native professional network
+**Technical recruiter turned builder** — 8 months deep into building with Claude Code and shipping tools for the future of work.
 
 ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/-Next.js-000000?style=flat-square&logo=next.js&logoColor=white)
@@ -8,40 +8,41 @@
 ![Vercel](https://img.shields.io/badge/-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
 ![Claude](https://img.shields.io/badge/-Claude-000000?style=flat-square&logo=anthropic&logoColor=white)
 
-> 10+ years as a technical recruiter showed me the truth: 90% of hiring is busywork that should never involve a human. I'm building the network where agents handle that — so when people finally talk, there's a real reason to.
+> 10+ years in technical recruiting showed me the truth: 90% of hiring is busywork that should never involve a human. I'm building tools that prove it.
 
-## What I'm Building
+## What I'm Shipping
 
-<img src="./assets/coffeeshop-logo.svg" width="20" height="20" align="top" /> **[Coffee Shop](https://coffeeshop.sh)** — the agentic LinkedIn.
+<img src="./assets/talentclaw-logo.svg" width="20" height="20" align="top" /> **[TalentClaw](https://github.com/jeffreyblue/talentclaw)** — open-source AI career agent. Local-first career hub + agent skills that search jobs, match your skills, manage your pipeline, and handle employer communication. Your personal recruiter that never sleeps.
 
-A professional network where agents represent humans. Your agent maintains your profile, finds opportunities, handles screening and outreach, and only surfaces the conversations worth having. No job boards. No cold InMails. No resume black holes. Just agents doing the work and humans making the meaningful calls.
+```bash
+npx talentclaw
+```
 
-### Open Source
+## What I'm Exploring
 
-<img src="./assets/talentclaw-logo.svg" width="20" height="20" align="top" /> **[TalentClaw](https://github.com/artemyshq/talentclaw)** — AI career agent. Searches jobs, matches your skills, applies on your behalf, and delivers weekly briefings. Your personal recruiter that never sleeps.
+<img src="./assets/coffeeshop-logo.svg" width="20" height="20" align="top" /> **[Coffee Shop](https://coffeeshop.sh)** — an agent-native professional network. The idea: a world where your AI agent maintains your profile, finds opportunities, handles screening, and only surfaces the conversations worth having. No job boards. No cold InMails. Just agents doing the work and humans making the meaningful calls.
 
-## What I'm Doing
+Part of **[ArtemysHQ](https://github.com/artemyshq)** — my long-term home for talent and future-of-work projects.
 
-- **Building the network** — Coffee Shop is where candidate and employer agents meet. Public profiles worth sharing, dashboards that show your agent at work, and trust earned at the network level.
-- **Shipping agent-first UX** — The best career tool is one you never open. Your agent handles discovery, applications, and communication while you focus on real decisions.
-- **AI-native development** — Building full products with Claude Code, agentic workflows, and a bias toward shipping.
+## What Drives Me
+
+- **AI-native development** — I build full products with Claude Code and agentic workflows. 8 months in, and the leverage is unreal.
+- **Agent-first UX** — The best career tool is one you never open. Your agent handles discovery, applications, and communication while you focus on real decisions.
+- **The talent space needs new infrastructure** — not better versions of the same broken tools, but new systems built for agents from day one.
 
 ## Connect
 
-[![Website](https://img.shields.io/badge/-coffeeshop.sh-FF5722?style=flat-square&logo=google-chrome&logoColor=white)](https://coffeeshop.sh)
 [![LinkedIn](https://img.shields.io/badge/-Jeff_Blue-0077B5?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/jeffblue)
-[![GitHub](https://img.shields.io/badge/-Follow-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/jeff-artemys)
+[![GitHub](https://img.shields.io/badge/-Follow-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/jeffreyblue)
 
 ---
 
 <details>
 <summary>More about me</summary>
 
-- 10+ year technical recruiter turned founder — I've lived inside the broken pipeline I'm replacing
-- Building Artemys solo with AI — founder, architect, and operator
-- TypeScript + Bun + Next.js + Claude Code is the stack
+- 10+ year technical recruiter — I've lived inside the broken pipeline I'm building for
+- Picked up Claude Code 8 months ago and haven't looked back — TypeScript + Bun + Next.js is the stack
 - Believe AI agents should represent people, not replace them
-- The recruiting industry doesn't need a better tool — it needs a new network built for agents from day one
 - Coffee Shop is named after the idea that the best career conversations happen informally — over coffee, not through a portal
 
 </details>

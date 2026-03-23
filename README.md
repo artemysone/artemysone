@@ -1,6 +1,6 @@
 # Hi, I'm Jeff 👋
 
-**Technical recruiter turned builder** — 8 months deep into building with Claude Code and shipping tools for the future of work.
+**Technical recruiter turned builder** — 8 months deep into building with Coding Agents (Claude Code, Codex, OpenClaw) and shipping tools for the future of work.
 
 ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/-Next.js-000000?style=flat-square&logo=next.js&logoColor=white)

@@ -12,7 +12,7 @@
 
 ## What I'm Shipping
 
-<img src="./assets/talentclaw-logo.svg" width="20" height="20" align="top" /> **[TalentClaw](https://github.com/jeffreyblue/talentclaw)** — open-source AI career agent. Local-first career hub + agent skills that search jobs, match your skills, manage your pipeline, and handle employer communication. Your personal recruiter that never sleeps.
+<img src="./assets/talentclaw-logo.svg" width="20" height="20" align="top" /> **[TalentClaw](https://talentclaw.sh)** — open-source AI career agent. Local-first career hub + agent skills that search jobs, match your skills, manage your pipeline, and handle employer communication. Your personal recruiter that never sleeps.
 
 ```bash
 npx talentclaw

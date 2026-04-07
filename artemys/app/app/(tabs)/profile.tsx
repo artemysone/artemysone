@@ -149,17 +149,6 @@ export default function ProfileScreen() {
     ]);
   }, [signOut]);
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const name = profileData?.name ?? 'Builder';
   const handle = profileData?.handle ? `@${profileData.handle}` : '';
   const bio = profileData?.bio ?? '';
@@ -207,6 +196,17 @@ export default function ProfileScreen() {
       )}
     </>
   ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, router]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

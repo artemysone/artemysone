@@ -1,13 +1,414 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors } from '@/constants/Colors';
+import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import { Avatar } from '@/components/Avatar';
+import { checkHandleAvailable, uploadAvatar } from '@/services/profiles';
+
+const HANDLE_REGEX = /^[a-z0-9_]+$/;
+const DEBOUNCE_MS = 500;
 
 export default function SignupScreen() {
+  const { signUp } = useAuth();
+
+  // Step management
+  const [step, setStep] = useState<1 | 2>(1);
+
+  // Step 1 fields
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Step 2 fields
+  const [name, setName] = useState('');
+  const [handle, setHandle] = useState('');
+  const [bio, setBio] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  // Handle availability
+  const [handleAvailable, setHandleAvailable] = useState<boolean | null>(null);
+  const [checkingHandle, setCheckingHandle] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // UI state
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Debounced handle check
+  const checkHandle = useCallback((value: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setHandleAvailable(null);
+
+    if (!value || value.length < 2) {
+      setCheckingHandle(false);
+      return;
+    }
+
+    if (!HANDLE_REGEX.test(value)) {
+      setCheckingHandle(false);
+      return;
+    }
+
+    setCheckingHandle(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const available = await checkHandleAvailable(value);
+        setHandleAvailable(available);
+      } catch {
+        setHandleAvailable(null);
+      } finally {
+        setCheckingHandle(false);
+      }
+    }, DEBOUNCE_MS);
+  }, []);
+
+  // Clean up debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const onHandleChange = (text: string) => {
+    const cleaned = text.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    setHandle(cleaned);
+    checkHandle(cleaned);
+  };
+
+  const handleContinue = () => {
+    setError('');
+
+    if (!email.trim()) {
+      setError('Email is required.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords don\u2019t match.');
+      return;
+    }
+
+    setStep(2);
+  };
+
+  const handleCreateAccount = async () => {
+    setError('');
+
+    if (!name.trim()) {
+      setError('Name is required.');
+      return;
+    }
+    if (!handle || handle.length < 2) {
+      setError('Handle must be at least 2 characters.');
+      return;
+    }
+    if (!HANDLE_REGEX.test(handle)) {
+      setError('Handle can only contain lowercase letters, numbers, and underscores.');
+      return;
+    }
+    if (handleAvailable === false) {
+      setError('That handle is already taken.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await signUp(email.trim(), password, { name: name.trim(), handle });
+
+      // If avatar was selected, upload it after signup.
+      // We need to wait briefly for the auth state to propagate so we have a user.
+      if (avatarUri) {
+        // The signUp triggers onAuthStateChange which sets the user.
+        // We'll use supabase.auth.getUser() to get the user ID.
+        const { supabase } = await import('@/lib/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          try {
+            await uploadAvatar(user.id, avatarUri);
+          } catch {
+            // Avatar upload failed but account was created — not blocking
+          }
+        }
+      }
+      // Session gating in root layout handles navigation
+    } catch (e: any) {
+      setError(e.message ?? 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pickAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  };
+
+  // Handle availability indicator
+  const renderHandleStatus = () => {
+    if (!handle || handle.length < 2) return null;
+
+    if (!HANDLE_REGEX.test(handle)) {
+      return (
+        <View style={styles.handleStatus}>
+          <Ionicons name="close-circle" size={18} color="#D44" />
+          <Text style={[styles.handleStatusText, { color: '#D44' }]}>
+            Letters, numbers, and underscores only
+          </Text>
+        </View>
+      );
+    }
+
+    if (checkingHandle) {
+      return (
+        <View style={styles.handleStatus}>
+          <ActivityIndicator size="small" color={colors.text.tertiary} />
+          <Text style={[styles.handleStatusText, { color: colors.text.tertiary }]}>
+            Checking...
+          </Text>
+        </View>
+      );
+    }
+
+    if (handleAvailable === true) {
+      return (
+        <View style={styles.handleStatus}>
+          <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+          <Text style={[styles.handleStatusText, { color: '#4CAF50' }]}>Available</Text>
+        </View>
+      );
+    }
+
+    if (handleAvailable === false) {
+      return (
+        <View style={styles.handleStatus}>
+          <Ionicons name="close-circle" size={18} color="#D44" />
+          <Text style={[styles.handleStatusText, { color: '#D44' }]}>Already taken</Text>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Create your account</Text>
-      <Text style={styles.subtitle}>Show what you've built</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.brand}>artemys</Text>
+            <Text style={styles.title}>
+              {step === 1 ? 'Create your account' : 'Set up your profile'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {step === 1 ? 'Show what you\u2019ve built' : 'How others will find you'}
+            </Text>
+            <View style={styles.stepIndicator}>
+              <View style={[styles.stepDot, styles.stepDotActive]} />
+              <View style={[styles.stepDot, step === 2 && styles.stepDotActive]} />
+            </View>
+          </View>
+
+          <View style={styles.form}>
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            {step === 1 ? (
+              <>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="you@example.com"
+                    placeholderTextColor={colors.text.tertiary}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    textContentType="emailAddress"
+                    autoComplete="email"
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="At least 6 characters"
+                    placeholderTextColor={colors.text.tertiary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    textContentType="newPassword"
+                    autoComplete="new-password"
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Confirm password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Re-enter your password"
+                    placeholderTextColor={colors.text.tertiary}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                    textContentType="newPassword"
+                    autoComplete="new-password"
+                  />
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.button,
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={handleContinue}
+                >
+                  <Text style={styles.buttonText}>Continue</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                {/* Avatar picker */}
+                <View style={styles.avatarSection}>
+                  <Pressable onPress={pickAvatar} style={styles.avatarPicker}>
+                    {avatarUri ? (
+                      <Avatar uri={avatarUri} name={name || 'U'} size="lg" />
+                    ) : (
+                      <Avatar uri={null} name={name || 'U'} size="lg" />
+                    )}
+                    <View style={styles.avatarBadge}>
+                      <Ionicons name="camera" size={14} color="#fff" />
+                    </View>
+                  </Pressable>
+                  <Text style={styles.avatarHint}>Tap to add a photo</Text>
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Your full name"
+                    placeholderTextColor={colors.text.tertiary}
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    textContentType="name"
+                    autoComplete="name"
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Handle</Text>
+                  <View style={styles.handleInputRow}>
+                    <Text style={styles.handlePrefix}>@</Text>
+                    <TextInput
+                      style={[styles.input, styles.handleInput]}
+                      placeholder="yourhandle"
+                      placeholderTextColor={colors.text.tertiary}
+                      value={handle}
+                      onChangeText={onHandleChange}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="username"
+                      autoComplete="username"
+                    />
+                  </View>
+                  {renderHandleStatus()}
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Bio <Text style={styles.optional}>(optional)</Text></Text>
+                  <TextInput
+                    style={[styles.input, styles.bioInput]}
+                    placeholder="What are you building?"
+                    placeholderTextColor={colors.text.tertiary}
+                    value={bio}
+                    onChangeText={setBio}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                <View style={styles.stepButtons}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.backButton,
+                      pressed && styles.backButtonPressed,
+                    ]}
+                    onPress={() => { setError(''); setStep(1); }}
+                  >
+                    <Ionicons name="arrow-back" size={18} color={colors.text.secondary} />
+                    <Text style={styles.backButtonText}>Back</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.button,
+                      styles.createButton,
+                      pressed && styles.buttonPressed,
+                      loading && styles.buttonDisabled,
+                    ]}
+                    onPress={handleCreateAccount}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.buttonText}>Create Account</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <Pressable onPress={() => router.replace('/login')}>
+              <Text style={styles.footerLink}>Sign in</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -16,8 +417,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  flex: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  header: {
+    marginBottom: spacing.xl,
+  },
+  brand: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.accent,
+    marginBottom: spacing.md,
   },
   title: {
     fontFamily: fonts.display,
@@ -28,6 +445,170 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 16,
     color: colors.text.secondary,
-    marginTop: 8,
+    marginTop: spacing.xs,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  stepDot: {
+    width: 32,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.borderLight,
+  },
+  stepDotActive: {
+    backgroundColor: colors.accent,
+  },
+  form: {
+    gap: spacing.md,
+  },
+  fieldGroup: {
+    gap: spacing.xs,
+  },
+  label: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.text.primary,
+  },
+  optional: {
+    fontFamily: fonts.body,
+    color: colors.text.tertiary,
+  },
+  input: {
+    backgroundColor: colors.card,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    fontFamily: fonts.body,
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  bioInput: {
+    minHeight: 80,
+    paddingTop: 14,
+  },
+  handleInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  handlePrefix: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 16,
+    color: colors.text.secondary,
+    marginRight: spacing.sm,
+  },
+  handleInput: {
+    flex: 1,
+  },
+  handleStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 2,
+  },
+  handleStatusText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  avatarPicker: {
+    position: 'relative',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.accent,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+  avatarHint: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.text.tertiary,
+    marginTop: spacing.sm,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(224,122,95,0.1)',
+    borderRadius: radius.sm,
+    padding: spacing.sm,
+  },
+  errorText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.accent,
+  },
+  button: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+    minHeight: 52,
+  },
+  buttonPressed: {
+    backgroundColor: colors.accentHover,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    fontFamily: fonts.display,
+    fontSize: 16,
+    color: '#fff',
+  },
+  stepButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: 15,
+    paddingHorizontal: spacing.md,
+  },
+  backButtonPressed: {
+    opacity: 0.6,
+  },
+  backButtonText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: colors.text.secondary,
+  },
+  createButton: {
+    flex: 1,
+    marginTop: 0,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.xl,
+  },
+  footerText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+  },
+  footerLink: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.accent,
   },
 });

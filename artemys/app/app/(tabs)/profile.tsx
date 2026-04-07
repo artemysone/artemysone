@@ -1,26 +1,81 @@
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  RefreshControl,
+  ActivityIndicator,
+  Dimensions,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing } from '@/constants/Colors';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { getProfile } from '@/services/profiles';
+import { getUserProjects } from '@/services/projects';
+import { Avatar } from '@/components/Avatar';
+import { AppBar } from '@/components/AppBar';
+import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import type { ProfileWithStats, Project } from '@/types/database';
 
-const PROJECTS = [
-  { name: 'Spatial Notes', gradient: ['#F4845F', '#F7B267'] as const },
-  { name: 'Wavelength', gradient: ['#7B2FBE', '#4A90D9'] as const },
-  { name: 'Carbon Tracker', gradient: ['#2D936C', '#47B5A0'] as const },
-  { name: 'Type Studio', gradient: ['#E07A5F', '#F2CC8F'] as const },
-  { name: 'Mood Board AI', gradient: ['#D84797', '#F09ABC'] as const },
-  { name: 'Transit', gradient: ['#3D5A80', '#98C1D9'] as const },
-  { name: 'Pocket Chef', gradient: ['#CB4B16', '#F5A623'] as const },
-  { name: 'Study Circles', gradient: ['#7C6AEF', '#C084FC'] as const },
-  { name: 'Drift', gradient: ['#0F766E', '#5EEAD4'] as const },
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const THUMB_GAP = 2;
+const THUMB_SIZE = (SCREEN_WIDTH - THUMB_GAP * 4) / 3;
+
+// Deterministic gradient from project id
+const GRADIENTS: readonly [string, string][] = [
+  ['#F4845F', '#F7B267'],
+  ['#7B2FBE', '#4A90D9'],
+  ['#2D936C', '#47B5A0'],
+  ['#E07A5F', '#F2CC8F'],
+  ['#D84797', '#F09ABC'],
+  ['#3D5A80', '#98C1D9'],
+  ['#CB4B16', '#F5A623'],
+  ['#7C6AEF', '#C084FC'],
+  ['#0F766E', '#5EEAD4'],
 ];
 
-function ProjectThumb({ project }: { project: (typeof PROJECTS)[0] }) {
+function getGradient(id: string): readonly [string, string] {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
+}
+
+function formatCount(n: number): string {
+  if (n >= 10_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  if (n >= 1_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  return String(n);
+}
+
+function ProjectThumb({ project }: { project: Project }) {
+  const hasThumbnail = project.thumbnail_url || project.media_url;
+  const imageUri = project.thumbnail_url ?? project.media_url;
+
+  if (hasThumbnail && imageUri) {
+    return (
+      <Pressable style={styles.thumb}>
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.thumbImage}
+          contentFit="cover"
+          transition={200}
+        />
+      </Pressable>
+    );
+  }
+
+  const grad = getGradient(project.id);
   return (
     <Pressable style={styles.thumb}>
-      <LinearGradient colors={project.gradient} style={styles.thumbGradient}>
+      <LinearGradient colors={grad as [string, string]} style={styles.thumbGradient}>
         <View style={styles.thumbUI}>
           <View style={styles.thumbLine} />
           <View style={[styles.thumbLine, { width: '45%' }]} />
@@ -31,67 +86,183 @@ function ProjectThumb({ project }: { project: (typeof PROJECTS)[0] }) {
   );
 }
 
-export default function ProfileScreen() {
+function EmptyProjects() {
+  const router = useRouter();
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.appBar}>
-        <Text style={styles.appBarTitle}>artemys</Text>
-        <Pressable>
-          <Ionicons name="notifications-outline" size={24} color={colors.text.primary} />
-        </Pressable>
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name="cube-outline" size={40} color={colors.text.tertiary} />
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile header */}
-        <View style={styles.profileHeader}>
-          <LinearGradient colors={[colors.accent, colors.gold]} style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>MC</Text>
-            </View>
-          </LinearGradient>
-          <Text style={styles.profileName}>Maya Chen</Text>
-          <Text style={styles.profileHandle}>@mayachen</Text>
-          <Text style={styles.profileBio}>
-            Building at the intersection of design & code. CS @ Stanford '25.
-          </Text>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>9</Text>
-              <Text style={styles.statLabel}>Projects</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>34</Text>
-              <Text style={styles.statLabel}>Collaborators</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>8.2K</Text>
-              <Text style={styles.statLabel}>Views</Text>
-            </View>
+      <Text style={styles.emptyTitle}>Share your first project</Text>
+      <Text style={styles.emptySubtitle}>
+        Show what you've been building — add a project to get started.
+      </Text>
+      <Pressable style={styles.emptyButton} onPress={() => router.push('/create')}>
+        <Ionicons name="add" size={18} color="#fff" />
+        <Text style={styles.emptyButtonText}>New Project</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+export default function ProfileScreen() {
+  const { user, signOut } = useAuth();
+  const router = useRouter();
+
+  const [profileData, setProfileData] = useState<ProfileWithStats | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [prof, projs] = await Promise.all([
+        getProfile(user.id),
+        getUserProjects(user.id),
+      ]);
+      setProfileData(prof);
+      setProjects(projs);
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    fetchData().finally(() => {
+      if (mounted) setLoading(false);
+    });
+    return () => { mounted = false; };
+  }, [fetchData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
+
+  const handleSignOut = useCallback(() => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: () => signOut(),
+      },
+    ]);
+  }, [signOut]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const name = profileData?.name ?? 'Builder';
+  const handle = profileData?.handle ? `@${profileData.handle}` : '';
+  const bio = profileData?.bio ?? '';
+  const projectCount = profileData?.project_count ?? 0;
+  const followerCount = profileData?.follower_count ?? 0;
+  const followingCount = profileData?.following_count ?? 0;
+
+  const ListHeader = () => (
+    <>
+      {/* Profile header */}
+      <View style={styles.profileHeader}>
+        <Avatar
+          uri={profileData?.avatar_url}
+          name={name}
+          size="lg"
+          showRing
+        />
+        <Text style={styles.profileName}>{name}</Text>
+        {handle ? <Text style={styles.profileHandle}>{handle}</Text> : null}
+        {bio ? <Text style={styles.profileBio}>{bio}</Text> : null}
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{formatCount(projectCount)}</Text>
+            <Text style={styles.statLabel}>Projects</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{formatCount(followerCount)}</Text>
+            <Text style={styles.statLabel}>Followers</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{formatCount(followingCount)}</Text>
+            <Text style={styles.statLabel}>Following</Text>
           </View>
         </View>
+      </View>
 
-        {/* Actions */}
-        <View style={styles.profileActions}>
-          <Pressable style={styles.editBtn}>
-            <Text style={styles.editBtnText}>Edit Profile</Text>
-          </Pressable>
-          <Pressable style={styles.shareBtn}>
-            <Ionicons name="share-outline" size={16} color={colors.text.primary} />
-          </Pressable>
-        </View>
+      {/* Actions */}
+      <View style={styles.profileActions}>
+        <Pressable
+          style={styles.editBtn}
+          onPress={() => router.push('/profile-edit' as any)}
+        >
+          <Text style={styles.editBtnText}>Edit Profile</Text>
+        </Pressable>
+        <Pressable style={styles.shareBtn}>
+          <Ionicons name="share-outline" size={16} color={colors.text.primary} />
+        </Pressable>
+      </View>
 
-        {/* Grid header */}
+      {/* Grid header */}
+      {projects.length > 0 && (
         <View style={styles.gridHeader}>
           <Text style={styles.gridTitle}>Projects</Text>
-          <Text style={styles.gridCount}>9 projects</Text>
+          <Text style={styles.gridCount}>
+            {projectCount} {projectCount === 1 ? 'project' : 'projects'}
+          </Text>
         </View>
+      )}
+    </>
+  );
 
-        {/* Project grid */}
-        <View style={styles.grid}>
-          {PROJECTS.map((project) => (
-            <ProjectThumb key={project.name} project={project} />
-          ))}
-        </View>
-      </ScrollView>
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+      {projects.length === 0 ? (
+        <FlatList
+          data={[]}
+          renderItem={null}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={EmptyProjects}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.accent}
+            />
+          }
+        />
+      ) : (
+        <FlatList
+          data={projects}
+          keyExtractor={(item) => item.id}
+          numColumns={3}
+          renderItem={({ item }) => <ProjectThumb project={item} />}
+          ListHeaderComponent={ListHeader}
+          showsVerticalScrollIndicator={false}
+          columnWrapperStyle={styles.gridRow}
+          contentContainerStyle={styles.gridContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.accent}
+            />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -101,42 +272,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  appBar: {
-    flexDirection: 'row',
+  loadingContainer: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.bg,
-  },
-  appBarTitle: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    color: colors.text.primary,
+    justifyContent: 'center',
   },
   profileHeader: {
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-  },
-  avatarRing: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    padding: 3,
-  },
-  avatar: {
-    flex: 1,
-    borderRadius: 44,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarText: {
-    fontFamily: fonts.display,
-    fontSize: 28,
-    color: colors.accent,
   },
   profileName: {
     fontFamily: fonts.display,
@@ -224,20 +368,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text.secondary,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-    paddingHorizontal: 2,
+  gridContainer: {
     paddingBottom: spacing.lg,
   },
+  gridRow: {
+    gap: THUMB_GAP,
+    paddingHorizontal: THUMB_GAP,
+  },
   thumb: {
-    width: '33%',
-    flexGrow: 1,
-    flexBasis: '33%',
-    maxWidth: '33.33%',
+    flex: 1,
+    maxWidth: THUMB_SIZE,
     aspectRatio: 1,
-    padding: 1,
+  },
+  thumbImage: {
+    flex: 1,
+    borderRadius: 2,
   },
   thumbGradient: {
     flex: 1,
@@ -262,5 +407,49 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.3)',
     marginTop: 4,
+  },
+  // Empty state
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text.primary,
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 21,
+    maxWidth: 260,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.lg,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+  },
+  emptyButtonText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: '#fff',
   },
 });

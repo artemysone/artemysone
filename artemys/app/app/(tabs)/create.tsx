@@ -1,39 +1,211 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '@/contexts/AuthContext';
+import { createProject, uploadProjectMedia } from '@/services/projects';
+import { searchProfiles } from '@/services/profiles';
+import { getTags } from '@/services/tags';
+import { AppBar } from '@/components/AppBar';
+import { MediaUploadArea } from '@/components/MediaUploadArea';
+import { TagChip } from '@/components/TagChip';
+import { CollaboratorChip } from '@/components/CollaboratorChip';
+import { Avatar } from '@/components/Avatar';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import type { Tag, Profile } from '@/types/database';
 
-const TAG_OPTIONS = ['Design', 'Mobile', 'Web', 'AI / ML', 'Hardware', 'Music', 'Film', 'Games'];
-
-const MOCK_TAGGED = [
-  { name: 'Aiden Park', initials: 'AP', gradient: ['#3D5A80', '#98C1D9'] as const },
-  { name: 'Sofia R.', initials: 'SR', gradient: ['#D84797', '#F09ABC'] as const },
-];
+interface SelectedCollaborator {
+  user_id: string;
+  name: string;
+  handle: string;
+  avatar_url: string | null;
+  role: string;
+}
 
 export default function CreateScreen() {
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const { user } = useAuth();
+  const router = useRouter();
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+  // Form state
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [collaborators, setCollaborators] = useState<SelectedCollaborator[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Tags from DB
+  const [tags, setTags] = useState<Tag[]>([]);
+
+  // Collaborator search
+  const [collabQuery, setCollabQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load tags on mount
+  useEffect(() => {
+    getTags()
+      .then(setTags)
+      .catch((err) => console.error('Failed to load tags:', err));
+  }, []);
+
+  // Debounced collaborator search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const trimmed = collabQuery.trim();
+    if (trimmed.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await searchProfiles(trimmed, 6);
+        // Filter out current user and already-added collaborators
+        const addedIds = new Set(collaborators.map((c) => c.user_id));
+        setSearchResults(
+          results.filter((p) => p.id !== user?.id && !addedIds.has(p.id)),
+        );
+      } catch (err) {
+        console.error('Search failed:', err);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [collabQuery, collaborators, user]);
+
+  // ---------- Actions ----------
+
+  const pickMedia = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      quality: 0.8,
+      videoMaxDuration: 30,
+    });
+
+    if (result.canceled || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    setMediaUri(asset.uri);
+    // Detect type: if duration exists and is > 0, it's a video
+    setMediaType(asset.type === 'video' || (asset.duration != null && asset.duration > 0) ? 'video' : 'image');
+  }, []);
+
+  const toggleTag = useCallback((tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
     );
-  };
+  }, []);
+
+  const addCollaborator = useCallback((profile: Profile) => {
+    setCollaborators((prev) => [
+      ...prev,
+      {
+        user_id: profile.id,
+        name: profile.name,
+        handle: profile.handle,
+        avatar_url: profile.avatar_url,
+        role: '',
+      },
+    ]);
+    setCollabQuery('');
+    setSearchResults([]);
+    Keyboard.dismiss();
+  }, []);
+
+  const removeCollaborator = useCallback((userId: string) => {
+    setCollaborators((prev) => prev.filter((c) => c.user_id !== userId));
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setTitle('');
+    setDescription('');
+    setMediaUri(null);
+    setMediaType('image');
+    setSelectedTagIds([]);
+    setCollaborators([]);
+    setCollabQuery('');
+    setSearchResults([]);
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (!user) return;
+
+    // Validate
+    if (!title.trim()) {
+      Alert.alert('Missing title', 'Give your project a name.');
+      return;
+    }
+    if (!mediaUri) {
+      Alert.alert('Missing media', 'Add a demo video or screenshot.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // 1. Create project record
+      const project = await createProject(user.id, {
+        title: title.trim(),
+        description: description.trim(),
+        tag_ids: selectedTagIds,
+        collaborators: collaborators.map((c) => ({
+          user_id: c.user_id,
+          role: c.role,
+        })),
+      });
+
+      // 2. Upload media
+      await uploadProjectMedia(user.id, project.id, mediaUri, mediaType);
+
+      // 3. Done — reset and go to profile
+      resetForm();
+      router.navigate('/(tabs)/profile');
+    } catch (err: any) {
+      Alert.alert('Error', err.message ?? 'Something went wrong. Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [user, title, description, mediaUri, mediaType, selectedTagIds, collaborators, resetForm, router]);
+
+  // ---------- Render ----------
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.appBar}>
-        <Text style={styles.appBarTitle}>New Project</Text>
-      </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {/* Upload area */}
-        <Pressable style={styles.uploadArea}>
-          <Ionicons name="cloud-upload-outline" size={36} color={colors.text.tertiary} />
-          <Text style={styles.uploadText}>Upload a demo video or screenshots</Text>
-          <Text style={styles.uploadHint}>MP4, MOV up to 30s · PNG, JPG</Text>
-        </Pressable>
+      <AppBar title="New Project" />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Media upload */}
+        <View style={styles.field}>
+          <MediaUploadArea
+            onPress={pickMedia}
+            selectedUri={mediaUri}
+            mediaType={mediaType}
+          />
+        </View>
 
         {/* Title */}
         <View style={styles.field}>
@@ -42,6 +214,9 @@ export default function CreateScreen() {
             style={styles.input}
             placeholder="What did you build?"
             placeholderTextColor={colors.text.tertiary}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={100}
           />
         </View>
 
@@ -52,6 +227,8 @@ export default function CreateScreen() {
             style={[styles.input, styles.textarea]}
             placeholder="Tell the story behind this project..."
             placeholderTextColor={colors.text.tertiary}
+            value={description}
+            onChangeText={setDescription}
             multiline
             textAlignVertical="top"
           />
@@ -61,16 +238,13 @@ export default function CreateScreen() {
         <View style={styles.field}>
           <Text style={styles.label}>Tags</Text>
           <View style={styles.tagsRow}>
-            {TAG_OPTIONS.map((tag) => (
-              <Pressable
-                key={tag}
-                style={[styles.tagChip, selectedTags.includes(tag) && styles.tagChipSelected]}
-                onPress={() => toggleTag(tag)}
-              >
-                <Text style={[styles.tagChipText, selectedTags.includes(tag) && styles.tagChipTextSelected]}>
-                  {tag}
-                </Text>
-              </Pressable>
+            {tags.map((tag) => (
+              <TagChip
+                key={tag.id}
+                label={tag.name}
+                selected={selectedTagIds.includes(tag.id)}
+                onPress={() => toggleTag(tag.id)}
+              />
             ))}
           </View>
         </View>
@@ -82,25 +256,61 @@ export default function CreateScreen() {
             style={styles.input}
             placeholder="Search people to tag..."
             placeholderTextColor={colors.text.tertiary}
+            value={collabQuery}
+            onChangeText={setCollabQuery}
           />
-          <View style={styles.taggedRow}>
-            {MOCK_TAGGED.map((person) => (
-              <View key={person.initials} style={styles.collabChip}>
-                <LinearGradient colors={person.gradient} style={styles.collabChipAvatar}>
-                  <Text style={styles.collabChipInitials}>{person.initials}</Text>
-                </LinearGradient>
-                <Text style={styles.collabChipName}>{person.name}</Text>
-                <Pressable style={styles.collabChipRemove}>
-                  <Ionicons name="close" size={12} color={colors.text.secondary} />
-                </Pressable>
-              </View>
-            ))}
-          </View>
+
+          {/* Search results dropdown */}
+          {(searchResults.length > 0 || searching) && (
+            <View style={styles.searchDropdown}>
+              {searching && searchResults.length === 0 ? (
+                <View style={styles.searchLoading}>
+                  <ActivityIndicator size="small" color={colors.accent} />
+                </View>
+              ) : (
+                searchResults.map((profile) => (
+                  <Pressable
+                    key={profile.id}
+                    style={styles.searchResult}
+                    onPress={() => addCollaborator(profile)}
+                  >
+                    <Avatar uri={profile.avatar_url} name={profile.name} size="sm" />
+                    <View style={styles.searchResultInfo}>
+                      <Text style={styles.searchResultName}>{profile.name}</Text>
+                      <Text style={styles.searchResultHandle}>@{profile.handle}</Text>
+                    </View>
+                  </Pressable>
+                ))
+              )}
+            </View>
+          )}
+
+          {/* Selected collaborators */}
+          {collaborators.length > 0 && (
+            <View style={styles.taggedRow}>
+              {collaborators.map((collab) => (
+                <CollaboratorChip
+                  key={collab.user_id}
+                  name={collab.name}
+                  avatarUrl={collab.avatar_url}
+                  onRemove={() => removeCollaborator(collab.user_id)}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Submit */}
-        <Pressable style={styles.postBtn}>
-          <Text style={styles.postBtnText}>Post Project</Text>
+        <Pressable
+          style={[styles.postBtn, submitting && styles.postBtnDisabled]}
+          onPress={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.postBtnText}>Post Project</Text>
+          )}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -112,43 +322,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
-  appBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.bg,
-  },
-  appBarTitle: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    color: colors.text.primary,
-  },
   content: {
     padding: spacing.lg,
     paddingTop: 0,
-  },
-  uploadArea: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: 36,
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: spacing.lg,
-  },
-  uploadText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  uploadHint: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.text.tertiary,
   },
   field: {
     marginBottom: spacing.lg,
@@ -180,67 +356,46 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  tagChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radius.sm,
-    backgroundColor: colors.input,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  tagChipSelected: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accent,
-  },
-  tagChipText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.text.secondary,
-  },
-  tagChipTextSelected: {
-    color: colors.accent,
-  },
   taggedRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: 10,
   },
-  collabChip: {
+  searchDropdown: {
+    backgroundColor: colors.card,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 10,
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+  },
+  searchLoading: {
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  searchResult: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingRight: 10,
-    paddingLeft: 6,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: colors.input,
+    gap: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
   },
-  collabChipAvatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+  searchResultInfo: {
+    flex: 1,
   },
-  collabChipInitials: {
-    fontSize: 8,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  collabChipName: {
-    fontFamily: fonts.body,
-    fontSize: 13,
+  searchResultName: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
     color: colors.text.primary,
   },
-  collabChipRemove: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 2,
+  searchResultHandle: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: 1,
   },
   postBtn: {
     backgroundColor: colors.accent,
@@ -248,6 +403,9 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     marginTop: spacing.sm,
+  },
+  postBtnDisabled: {
+    opacity: 0.6,
   },
   postBtnText: {
     fontFamily: fonts.display,

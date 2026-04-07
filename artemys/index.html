@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artemys — Career Wallet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-page: #2C2825;
+      --bg-screen: #FAF7F2;
+      --bg-card: #FFFFFF;
+      --bg-input: #F3EDE4;
+      --text-primary: #2D2A26;
+      --text-secondary: #8C8580;
+      --text-tertiary: #B8B0A8;
+      --accent: #E07A5F;
+      --accent-hover: #D06A4F;
+      --verified: #81B29A;
+      --verified-soft: #E8F5EE;
+      --gold: #F2CC8F;
+      --border: #E8E2D9;
+      --border-light: #F0EBE3;
+      --font-display: 'Bricolage Grotesque', sans-serif;
+      --font-serif: 'Source Serif 4', Georgia, serif;
+      --font-body: 'DM Sans', system-ui, sans-serif;
+      --phone-w: 390px;
+      --phone-h: 844px;
+      --nav-h: 72px;
+      --status-h: 54px;
+      --r-phone: 50px;
+    }
+
+    html { height: 100%; }
+
+    body {
+      min-height: 100%;
+      background: var(--bg-page);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-body);
+      color: var(--text-primary);
+      padding: 40px 20px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 32px;
+      animation: fadeUp 0.8s ease both;
+    }
+    .page-header h1 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 500;
+      color: #FAF7F2;
+      letter-spacing: 0.04em;
+    }
+    .page-header p {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: #8C8580;
+      margin-top: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Phone frame ── */
+    .phone-frame {
+      width: var(--phone-w);
+      height: var(--phone-h);
+      border-radius: var(--r-phone);
+      background: #000;
+      padding: 8px;
+      position: relative;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.4),
+        0 10px 30px rgba(0,0,0,0.3),
+        inset 0 0 0 1px rgba(255,255,255,0.06);
+      animation: fadeUp 0.8s 0.15s ease both;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: calc(var(--r-phone) - 8px);
+      background: var(--bg-screen);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dynamic-island {
+      width: 126px;
+      height: 36px;
+      background: #000;
+      border-radius: 18px;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      height: var(--status-h);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 28px 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+    .status-bar .time { font-size: 15px; font-weight: 600; }
+    .status-icons { display: flex; gap: 5px; align-items: center; }
+    .status-icons svg { width: 16px; height: 16px; }
+
+    /* ── App content ── */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .app-content::-webkit-scrollbar { display: none; }
+
+    .tab-panel {
+      display: none;
+      min-height: 100%;
+    }
+    .tab-panel.active { display: block; }
+
+    /* ── App bar ── */
+    .app-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px 12px;
+      position: sticky;
+      top: 0;
+      background: var(--bg-screen);
+      z-index: 10;
+    }
+    .app-bar-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .app-bar-icon {
+      width: 24px;
+      height: 24px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .app-bar-icon:hover { color: var(--accent); }
+
+    /* ── Bottom navigation ── */
+    .bottom-nav {
+      height: var(--nav-h);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 10px;
+      background: var(--bg-screen);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 20;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      transition: color 0.2s;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      padding: 0;
+    }
+    .nav-item svg { width: 24px; height: 24px; transition: transform 0.2s; }
+    .nav-item span {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .nav-item.active { color: var(--accent); }
+    .nav-item.active svg { transform: scale(1.05); }
+    .nav-item.create-btn { color: var(--text-primary); }
+    .nav-item.create-btn svg {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 12px;
+      padding: 4px;
+      color: white;
+    }
+
+    /* ── Profile tab ── */
+    .profile-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 20px 0;
+    }
+    .avatar-ring {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--verified), var(--accent));
+    }
+    .avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #E07A5F, #F2CC8F);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 600;
+      color: white;
+      border: 3px solid var(--bg-screen);
+    }
+    .profile-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .verified-badge {
+      display: inline-flex;
+      flex-shrink: 0;
+    }
+    .profile-handle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .profile-bio {
+      font-size: 14px;
+      color: var(--text-primary);
+      text-align: center;
+      line-height: 1.5;
+      margin-top: 10px;
+      max-width: 280px;
+    }
+    .profile-stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 18px;
+      padding-bottom: 18px;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .edit-profile-btn {
+      width: calc(100% - 40px);
+      margin: 0 auto;
+      padding: 9px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .edit-profile-btn:hover {
+      background: var(--text-primary);
+      color: var(--bg-screen);
+      border-color: var(--text-primary);
+    }
+    .profile-tabs {
+      display: flex;
+      margin-top: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .profile-tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: var(--font-body);
+    }
+    .profile-tab.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--text-primary);
+    }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      padding: 2px;
+    }
+    .project-thumb {
+      aspect-ratio: 1;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .project-thumb .thumb-bg {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease;
+    }
+    .project-thumb:hover .thumb-bg { transform: scale(1.05); }
+    .thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.3s;
+    }
+    .project-thumb:hover .thumb-overlay { background: rgba(0,0,0,0.35); }
+    .thumb-overlay .thumb-name,
+    .thumb-overlay .thumb-play {
+      opacity: 0;
+      transform: translateY(6px);
+      transition: all 0.3s;
+    }
+    .project-thumb:hover .thumb-overlay .thumb-name,
+    .project-thumb:hover .thumb-overlay .thumb-play {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .thumb-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .thumb-play svg { width: 28px; height: 28px; color: white; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3)); }
+
+    /* decorative shapes inside thumbnails */
+    .thumb-ui {
+      position: absolute;
+      inset: 0;
+      padding: 20%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      justify-content: center;
+    }
+    .thumb-line {
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.35);
+      width: 70%;
+    }
+    .thumb-line.short { width: 45%; }
+    .thumb-line.med { width: 58%; }
+    .thumb-circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      margin-top: 4px;
+    }
+    .thumb-rect {
+      width: 36px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.25);
+    }
+
+    /* ── Feed tab ── */
+    .feed-post {
+      background: var(--bg-card);
+      margin-bottom: 8px;
+    }
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+    }
+    .post-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+    .post-user-info { flex: 1; }
+    .post-user-name {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .post-user-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+    .post-media {
+      width: 100%;
+      aspect-ratio: 4/3;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .post-play {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+    .post-media:hover .post-play { transform: scale(1.08); }
+    .post-play svg { width: 22px; height: 22px; color: white; margin-left: 2px; }
+    .post-actions {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px 8px;
+      gap: 16px;
+    }
+    .post-action {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 0;
+      transition: color 0.2s;
+    }
+    .post-action:hover { color: var(--accent); }
+    .post-action svg { width: 22px; height: 22px; }
+    .post-action.liked { color: #E25555; }
+    .post-action.liked svg { fill: #E25555; }
+    .post-action-spacer { flex: 1; }
+    .post-body { padding: 4px 16px 16px; }
+    .post-title {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .post-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+    .post-collabs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .collab-stack {
+      display: flex;
+    }
+    .collab-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      color: white;
+      margin-left: -6px;
+    }
+    .collab-dot:first-child { margin-left: 0; }
+
+    /* ── Explore tab ── */
+    .explore-search {
+      margin: 0 16px 12px;
+      position: relative;
+    }
+    .explore-search input {
+      width: 100%;
+      padding: 12px 16px 12px 40px;
+      border: none;
+      border-radius: 12px;
+      background: var(--bg-input);
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+      transition: box-shadow 0.2s;
+    }
+    .explore-search input::placeholder { color: var(--text-tertiary); }
+    .explore-search input:focus { box-shadow: 0 0 0 2px var(--accent); }
+    .explore-search svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--text-tertiary);
+    }
+    .category-pills {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .category-pills::-webkit-scrollbar { display: none; }
+    .pill {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: none;
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      transition: all 0.2s;
+    }
+    .pill.active, .pill:hover {
+      background: var(--text-primary);
+      color: var(--bg-screen);
+      border-color: var(--text-primary);
+    }
+    .explore-section-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      padding: 4px 16px 12px;
+    }
+    .explore-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 0 16px 24px;
+    }
+    .explore-card {
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .explore-card:hover { transform: translateY(-2px); }
+    .explore-card-media {
+      aspect-ratio: 3/4;
+      display: flex;
+      align-items: flex-end;
+      padding: 12px;
+      position: relative;
+    }
+    .explore-card-info {
+      position: relative;
+      z-index: 2;
+    }
+    .explore-card-media::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
+    }
+    .explore-card-title {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 600;
+      color: white;
+    }
+    .explore-card-user {
+      font-size: 12px;
+      color: rgba(255,255,255,0.75);
+      margin-top: 2px;
+    }
+
+    /* ── Create tab ── */
+    .create-page { padding: 0 20px 40px; }
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .upload-area:hover {
+      border-color: var(--accent);
+      background: rgba(224,122,95,0.04);
+    }
+    .upload-area svg { width: 40px; height: 40px; color: var(--text-tertiary); }
+    .upload-area p { font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.5; }
+    .form-group { margin-bottom: 20px; }
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-card);
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus { border-color: var(--accent); }
+    .form-textarea { resize: none; height: 100px; line-height: 1.5; }
+    .form-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .form-tag {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--bg-input);
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      font-family: var(--font-body);
+      transition: all 0.2s;
+    }
+    .form-tag.selected {
+      background: var(--accent);
+      color: white;
+    }
+    .post-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: white;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    .post-btn:hover { background: var(--accent-hover); }
+
+    /* ── Wallet tab ── */
+    .wallet-header-section {
+      text-align: center;
+      padding: 8px 20px 24px;
+    }
+    .wallet-trust-score {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 24px;
+      background: var(--verified-soft);
+      margin-bottom: 6px;
+    }
+    .wallet-trust-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--verified);
+    }
+    .wallet-trust-dots {
+      display: flex;
+      gap: 3px;
+    }
+    .wallet-trust-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--verified);
+    }
+    .wallet-trust-dot.empty { background: #C8DDD2; }
+    .wallet-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+    .credentials-list { padding: 0 16px 24px; }
+    .credential-card {
+      display: flex;
+      align-items: stretch;
+      background: var(--bg-card);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .credential-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.05);
+    }
+    .credential-accent {
+      width: 5px;
+      flex-shrink: 0;
+    }
+    .credential-body {
+      flex: 1;
+      padding: 16px;
+    }
+    .credential-org {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .credential-title {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .credential-date {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .credential-verified {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+    .verified-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: var(--verified-soft);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--verified);
+    }
+    .add-credential-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: calc(100% - 32px);
+      margin: 8px 16px 24px;
+      padding: 14px;
+      border: 1.5px dashed var(--border);
+      border-radius: 14px;
+      background: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .add-credential-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .add-credential-btn svg { width: 20px; height: 20px; }
+
+    /* ── Project modal ── */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .project-modal {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 88%;
+      background: var(--bg-screen);
+      border-radius: 24px 24px 0 0;
+      z-index: 31;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .project-modal.open { transform: translateY(0); }
+    .modal-handle {
+      width: 36px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--border);
+      margin: 10px auto;
+      flex-shrink: 0;
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.06);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      transition: background 0.2s;
+    }
+    .modal-close:hover { background: rgba(0,0,0,0.1); }
+    .modal-close svg { width: 16px; height: 16px; color: var(--text-primary); }
+    .modal-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .modal-scroll::-webkit-scrollbar { display: none; }
+    .modal-media {
+      width: 100%;
+      aspect-ratio: 16/10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-body { padding: 20px; }
+    .modal-title {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-creator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .modal-creator-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: white;
+    }
+    .modal-desc {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      margin-bottom: 20px;
+    }
+    .modal-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+    .modal-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .modal-tag {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--bg-input);
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .modal-collabs {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .modal-collab {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-collab-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+    .modal-collab-info { flex: 1; }
+    .modal-collab-name { font-size: 14px; font-weight: 600; }
+    .modal-collab-role { font-size: 12px; color: var(--text-secondary); }
+    .modal-stats {
+      display: flex;
+      gap: 20px;
+      padding: 16px 0;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 20px;
+    }
+    .modal-stat {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .modal-stat strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .modal-action-btn {
+      flex: 1;
+      padding: 13px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text-primary);
+    }
+    .modal-action-btn:hover {
+      background: var(--text-primary);
+      color: var(--bg-screen);
+      border-color: var(--text-primary);
+    }
+    .modal-action-btn.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .modal-action-btn.primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 420px) {
+      .page-header { display: none; }
+      .phone-frame {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+      .phone-screen { border-radius: 0; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <h1>artemys</h1>
+    <p>project gallery — mobile concept</p>
+  </div>
+
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+
+      <!-- Status bar -->
+      <div class="status-bar">
+        <span class="time">9:41</span>
+        <div class="status-icons">
+          <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="4" width="3" height="8" rx="0.5"/><rect x="4.5" y="2.5" width="3" height="9.5" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13.5" y="0" width="3" height="12" rx="0.5"/></svg>
+          <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 4.5C3.5 1.5 7 0 8 0s4.5 1.5 7 4.5L8 12 1 4.5z" opacity="0.95"/></svg>
+          <svg viewBox="0 0 28 13" fill="currentColor"><rect x="0" y="0.5" width="23" height="12" rx="2.5" stroke="currentColor" stroke-width="1" fill="none"/><rect x="24" y="4" width="2.5" height="5" rx="1"/><rect x="2" y="2.5" width="17" height="8" rx="1"/></svg>
+        </div>
+      </div>
+
+      <!-- App content area -->
+      <div class="app-content">
+
+        <!-- ═══ PROFILE TAB ═══ -->
+        <div class="tab-panel active" id="tab-profile">
+          <div class="app-bar">
+            <span class="app-bar-title">artemys</span>
+            <svg class="app-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </div>
+
+          <div class="profile-header">
+            <div class="avatar-ring"><div class="avatar">MC</div></div>
+            <div class="profile-name">
+              Maya Chen
+              <svg class="verified-badge" viewBox="0 0 20 20" width="18" height="18"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="profile-handle">@mayachen</div>
+            <div class="profile-bio">Building at the intersection of design & code. CS @ Stanford '25.</div>
+            <div class="profile-stats">
+              <div class="stat"><span class="stat-num">12</span><span class="stat-label">Projects</span></div>
+              <div class="stat"><span class="stat-num">34</span><span class="stat-label">Collaborators</span></div>
+              <div class="stat"><span class="stat-num">8.2K</span><span class="stat-label">Views</span></div>
+            </div>
+          </div>
+          <button class="edit-profile-btn">Edit Profile</button>
+
+          <div class="profile-tabs">
+            <button class="profile-tab active">Projects</button>
+            <button class="profile-tab">About</button>
+          </div>
+
+          <div class="project-grid">
+            <div class="project-thumb" data-project="0">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#F4845F,#F7B267)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-line short"></div><div class="thumb-circle"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Spatial Notes</span></div>
+            </div>
+            <div class="project-thumb" data-project="1">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#7B2FBE,#4A90D9)">
+                <div class="thumb-ui"><div class="thumb-circle"></div><div class="thumb-line"></div><div class="thumb-line med"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Wavelength</span></div>
+            </div>
+            <div class="project-thumb" data-project="2">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#2D936C,#47B5A0)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-rect"></div><div class="thumb-line short"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Carbon Tracker</span></div>
+            </div>
+            <div class="project-thumb" data-project="3">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#E07A5F,#F2CC8F)">
+                <div class="thumb-ui"><div class="thumb-line med"></div><div class="thumb-line"></div><div class="thumb-line short"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Type Studio</span></div>
+            </div>
+            <div class="project-thumb" data-project="4">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#D84797,#F09ABC)">
+                <div class="thumb-ui"><div class="thumb-circle"></div><div class="thumb-line"></div><div class="thumb-circle"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Mood Board AI</span></div>
+            </div>
+            <div class="project-thumb" data-project="5">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#3D5A80,#98C1D9)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-line med"></div><div class="thumb-rect"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Transit</span></div>
+            </div>
+            <div class="project-thumb" data-project="6">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#CB4B16,#F5A623)">
+                <div class="thumb-ui"><div class="thumb-rect"></div><div class="thumb-line"></div><div class="thumb-line short"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Pocket Chef</span></div>
+            </div>
+            <div class="project-thumb" data-project="7">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#7C6AEF,#C084FC)">
+                <div class="thumb-ui"><div class="thumb-line short"></div><div class="thumb-circle"></div><div class="thumb-line"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Study Circles</span></div>
+            </div>
+            <div class="project-thumb" data-project="8">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#0F766E,#5EEAD4)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-line med"></div><div class="thumb-circle"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Drift</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ FEED TAB ═══ -->
+        <div class="tab-panel" id="tab-feed">
+          <div class="app-bar">
+            <span class="app-bar-title">Feed</span>
+            <svg class="app-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </div>
+
+          <!-- Post 1 -->
+          <div class="feed-post">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#3D5A80,#98C1D9)">JR</div>
+              <div class="post-user-info">
+                <div class="post-user-name">Jordan Rivera <svg class="verified-badge" viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="post-user-meta">@jordanr · 2h</div>
+              </div>
+            </div>
+            <div class="post-media" style="background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)">
+              <div class="post-play"><svg viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg></div>
+            </div>
+            <div class="post-actions">
+              <button class="post-action like-btn" onclick="toggleLike(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span>234</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>18</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></button>
+            </div>
+            <div class="post-body">
+              <div class="post-title">Halo</div>
+              <div class="post-desc">A minimal smart home dashboard that adapts its layout based on time of day and your routines. Built with SwiftUI.</div>
+            </div>
+            <div class="post-collabs">
+              <div class="collab-stack">
+                <div class="collab-dot" style="background:#E07A5F">AP</div>
+                <div class="collab-dot" style="background:#7C6AEF">LK</div>
+                <div class="collab-dot" style="background:#2D936C">TN</div>
+              </div>
+              <span>3 collaborators · Verified</span>
+            </div>
+          </div>
+
+          <!-- Post 2 -->
+          <div class="feed-post">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#D84797,#F09ABC)">PS</div>
+              <div class="post-user-info">
+                <div class="post-user-name">Priya Sharma <svg class="verified-badge" viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="post-user-meta">@priyabuilds · 5h</div>
+              </div>
+            </div>
+            <div class="post-media" style="background:linear-gradient(135deg,#264653,#2a9d8f,#e9c46a)">
+              <div class="post-play"><svg viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg></div>
+            </div>
+            <div class="post-actions">
+              <button class="post-action like-btn" onclick="toggleLike(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span>412</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>31</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></button>
+            </div>
+            <div class="post-body">
+              <div class="post-title">Bloom</div>
+              <div class="post-desc">Plant care companion that uses your phone camera to diagnose issues and track growth over time. Computer vision meets green thumbs.</div>
+            </div>
+            <div class="post-collabs">
+              <div class="collab-stack">
+                <div class="collab-dot" style="background:#F4845F">AR</div>
+                <div class="collab-dot" style="background:#3D5A80">KW</div>
+              </div>
+              <span>2 collaborators · Verified</span>
+            </div>
+          </div>
+
+          <!-- Post 3 -->
+          <div class="feed-post">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#CB4B16,#F5A623)">MK</div>
+              <div class="post-user-info">
+                <div class="post-user-name">Marcus Kim</div>
+                <div class="post-user-meta">@marcuskim · 1d</div>
+              </div>
+            </div>
+            <div class="post-media" style="background:linear-gradient(135deg,#0d1b2a,#1b263b,#415a77)">
+              <div class="post-play"><svg viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg></div>
+            </div>
+            <div class="post-actions">
+              <button class="post-action like-btn" onclick="toggleLike(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span>89</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>7</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></button>
+            </div>
+            <div class="post-body">
+              <div class="post-title">Offset</div>
+              <div class="post-desc">A marketplace concept for micro carbon credits. Track, buy, and retire credits from verified reforestation projects.</div>
+            </div>
+            <div class="post-collabs">
+              <div class="collab-stack">
+                <div class="collab-dot" style="background:#7B2FBE">SL</div>
+                <div class="collab-dot" style="background:#E07A5F">JT</div>
+                <div class="collab-dot" style="background:#0F766E">RH</div>
+                <div class="collab-dot" style="background:#D84797">NP</div>
+              </div>
+              <span>4 collaborators</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ EXPLORE TAB ═══ -->
+        <div class="tab-panel" id="tab-explore">
+          <div class="app-bar">
+            <span class="app-bar-title">Explore</span>
+            <svg class="app-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+          </div>
+          <div class="explore-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search projects, people, tags...">
+          </div>
+          <div class="category-pills">
+            <button class="pill active">All</button>
+            <button class="pill">Design</button>
+            <button class="pill">Engineering</button>
+            <button class="pill">Music</button>
+            <button class="pill">Film</button>
+            <button class="pill">Business</button>
+            <button class="pill">Research</button>
+          </div>
+
+          <div class="explore-section-title">Trending This Week</div>
+          <div class="explore-grid">
+            <div class="explore-card">
+              <div class="explore-card-media" style="background:linear-gradient(160deg,#f72585,#7209b7)">
+                <div class="explore-card-info"><div class="explore-card-title">Synthwave</div><div class="explore-card-user">@alexmori</div></div>
+              </div>
+            </div>
+            <div class="explore-card">
+              <div class="explore-card-media" style="background:linear-gradient(160deg,#06d6a0,#118ab2)">
+                <div class="explore-card-info"><div class="explore-card-title">Canopy</div><div class="explore-card-user">@lenapark</div></div>
+              </div>
+            </div>
+            <div class="explore-card">
+              <div class="explore-card-media" style="background:linear-gradient(160deg,#ff6b35,#f7c59f)">
+                <div class="explore-card-info"><div class="explore-card-title">Solder</div><div class="explore-card-user">@devraj</div></div>
+              </div>
+            </div>
+            <div class="explore-card">
+              <div class="explore-card-media" style="background:linear-gradient(160deg,#2b2d42,#8d99ae)">
+                <div class="explore-card-info"><div class="explore-card-title">Mono</div><div class="explore-card-user">@sarahk</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="explore-section-title">New & Noteworthy</div>
+          <div class="explore-grid" style="padding-bottom:40px">
+            <div class="explore-card">
+              <div class="explore-card-media" style="background:linear-gradient(160deg,#e63946,#f1faee)">
+                <div class="explore-card-info"><div class="explore-card-title">Pulse</div><div class="explore-card-user">@jcole</div></div>
+              </div>
+            </div>
+            <div class="explore-card">
+              <div class="explore-card-media" style="background:linear-gradient(160deg,#023e8a,#90e0ef)">
+                <div class="explore-card-info"><div class="explore-card-title">Depth</div><div class="explore-card-user">@ninaross</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ CREATE TAB ═══ -->
+        <div class="tab-panel" id="tab-create">
+          <div class="app-bar">
+            <span class="app-bar-title">New Project</span>
+            <svg class="app-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          <div class="create-page">
+            <div class="upload-area">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4M16 8l-4-4-4 4M12 4v12"/></svg>
+              <p>Upload a demo video, screenshots,<br>or design files</p>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Project Title</label>
+              <input class="form-input" type="text" placeholder="What did you build?">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-textarea" placeholder="Tell the story behind this project..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tags</label>
+              <div class="form-tags">
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Design</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Mobile</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Web</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">AI/ML</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Hardware</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Music</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Film</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Collaborators</label>
+              <input class="form-input" type="text" placeholder="Search people to tag...">
+            </div>
+            <button class="post-btn">Post Project</button>
+          </div>
+        </div>
+
+        <!-- ═══ WALLET TAB ═══ -->
+        <div class="tab-panel" id="tab-wallet">
+          <div class="app-bar">
+            <span class="app-bar-title">Credentials</span>
+            <svg class="app-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+
+          <div class="wallet-header-section">
+            <div class="wallet-trust-score">
+              <span class="wallet-trust-label">Trust Score</span>
+              <div class="wallet-trust-dots">
+                <div class="wallet-trust-dot"></div>
+                <div class="wallet-trust-dot"></div>
+                <div class="wallet-trust-dot"></div>
+                <div class="wallet-trust-dot"></div>
+                <div class="wallet-trust-dot empty"></div>
+              </div>
+            </div>
+            <div class="wallet-subtitle">5 verified credentials · All current</div>
+          </div>
+
+          <div class="credentials-list">
+            <div class="credential-card">
+              <div class="credential-accent" style="background:#8C1515"></div>
+              <div class="credential-body">
+                <div class="credential-org">Stanford University</div>
+                <div class="credential-title">B.S. Computer Science</div>
+                <div class="credential-date">Aug 2021 – Jun 2025</div>
+              </div>
+              <div class="credential-verified">
+                <div class="verified-pill">
+                  <svg viewBox="0 0 20 20" width="13" height="13"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Verified
+                </div>
+              </div>
+            </div>
+
+            <div class="credential-card">
+              <div class="credential-accent" style="background:#A259FF"></div>
+              <div class="credential-body">
+                <div class="credential-org">Figma</div>
+                <div class="credential-title">Product Design Intern</div>
+                <div class="credential-date">Jun 2024 – Sep 2024</div>
+              </div>
+              <div class="credential-verified">
+                <div class="verified-pill">
+                  <svg viewBox="0 0 20 20" width="13" height="13"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Verified
+                </div>
+              </div>
+            </div>
+
+            <div class="credential-card">
+              <div class="credential-accent" style="background:#4285F4"></div>
+              <div class="credential-body">
+                <div class="credential-org">Google Developer Student Club</div>
+                <div class="credential-title">Chapter Lead</div>
+                <div class="credential-date">Sep 2023 – Jun 2024</div>
+              </div>
+              <div class="credential-verified">
+                <div class="verified-pill">
+                  <svg viewBox="0 0 20 20" width="13" height="13"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Verified
+                </div>
+              </div>
+            </div>
+
+            <div class="credential-card">
+              <div class="credential-accent" style="background:#FF9900"></div>
+              <div class="credential-body">
+                <div class="credential-org">Amazon Web Services</div>
+                <div class="credential-title">Cloud Practitioner — Certified</div>
+                <div class="credential-date">Mar 2024</div>
+              </div>
+              <div class="credential-verified">
+                <div class="verified-pill">
+                  <svg viewBox="0 0 20 20" width="13" height="13"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Verified
+                </div>
+              </div>
+            </div>
+
+            <div class="credential-card">
+              <div class="credential-accent" style="background:#00C4B4"></div>
+              <div class="credential-body">
+                <div class="credential-org">TreeHacks 2024</div>
+                <div class="credential-title">Grand Prize Winner</div>
+                <div class="credential-date">Feb 2024</div>
+              </div>
+              <div class="credential-verified">
+                <div class="verified-pill">
+                  <svg viewBox="0 0 20 20" width="13" height="13"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Verified
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="add-credential-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Credential
+          </button>
+        </div>
+
+      </div><!-- /app-content -->
+
+      <!-- Modal backdrop -->
+      <div class="modal-backdrop" id="modalBackdrop" onclick="closeModal()"></div>
+
+      <!-- Project detail modal -->
+      <div class="project-modal" id="projectModal">
+        <div class="modal-handle"></div>
+        <button class="modal-close" onclick="closeModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="modal-scroll">
+          <div class="modal-media" id="modalMedia" style="background:linear-gradient(135deg,#F4845F,#F7B267)"></div>
+          <div class="modal-body">
+            <div class="modal-title" id="modalTitle">
+              Spatial Notes
+              <svg class="verified-badge" viewBox="0 0 20 20" width="18" height="18"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="modal-creator">
+              <div class="modal-creator-avatar" style="background:linear-gradient(135deg,#E07A5F,#F2CC8F)">MC</div>
+              Maya Chen · @mayachen
+            </div>
+            <div class="modal-desc" id="modalDesc">An AR-powered note-taking app that lets students pin notes to physical locations on campus. Walk into a lecture hall and see your notes from last class floating above your desk.</div>
+
+            <div class="modal-section-title">Tech Stack</div>
+            <div class="modal-tags" id="modalTags">
+              <span class="modal-tag">Swift</span>
+              <span class="modal-tag">ARKit</span>
+              <span class="modal-tag">CoreML</span>
+              <span class="modal-tag">Firebase</span>
+            </div>
+
+            <div class="modal-section-title">Collaborators</div>
+            <div class="modal-collabs" id="modalCollabs">
+              <div class="modal-collab">
+                <div class="modal-collab-avatar" style="background:linear-gradient(135deg,#3D5A80,#98C1D9)">AP</div>
+                <div class="modal-collab-info"><div class="modal-collab-name">Aiden Park</div><div class="modal-collab-role">Backend & Cloud</div></div>
+                <div class="verified-pill"><svg viewBox="0 0 20 20" width="12" height="12"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Verified</div>
+              </div>
+              <div class="modal-collab">
+                <div class="modal-collab-avatar" style="background:linear-gradient(135deg,#D84797,#F09ABC)">SR</div>
+                <div class="modal-collab-info"><div class="modal-collab-name">Sofia Rodriguez</div><div class="modal-collab-role">UX Design</div></div>
+                <div class="verified-pill"><svg viewBox="0 0 20 20" width="12" height="12"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Verified</div>
+              </div>
+              <div class="modal-collab">
+                <div class="modal-collab-avatar" style="background:linear-gradient(135deg,#7C6AEF,#C084FC)">TB</div>
+                <div class="modal-collab-info"><div class="modal-collab-name">Tyler Brooks</div><div class="modal-collab-role">ML & Computer Vision</div></div>
+                <div class="verified-pill"><svg viewBox="0 0 20 20" width="12" height="12"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Verified</div>
+              </div>
+            </div>
+
+            <div class="modal-stats">
+              <div class="modal-stat"><strong>1.2K</strong> views</div>
+              <div class="modal-stat"><strong>89</strong> likes</div>
+              <div class="modal-stat"><strong>23</strong> comments</div>
+            </div>
+
+            <div class="modal-actions">
+              <button class="modal-action-btn">Share</button>
+              <button class="modal-action-btn primary">Support Project</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom navigation -->
+      <nav class="bottom-nav">
+        <button class="nav-item" data-tab="feed" onclick="switchTab('feed')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Feed</span>
+        </button>
+        <button class="nav-item" data-tab="explore" onclick="switchTab('explore')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span>Explore</span>
+        </button>
+        <button class="nav-item create-btn" data-tab="create" onclick="switchTab('create')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span></span>
+        </button>
+        <button class="nav-item" data-tab="wallet" onclick="switchTab('wallet')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <span>Wallet</span>
+        </button>
+        <button class="nav-item active" data-tab="profile" onclick="switchTab('profile')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6"/></svg>
+          <span>Profile</span>
+        </button>
+      </nav>
+
+    </div><!-- /phone-screen -->
+  </div><!-- /phone-frame -->
+
+  <script>
+    // Project data
+    const projects = [
+      { name: 'Spatial Notes', grad: 'linear-gradient(135deg,#F4845F,#F7B267)', desc: 'An AR-powered note-taking app that lets students pin notes to physical locations on campus. Walk into a lecture hall and see your notes from last class floating above your desk.', tags: ['Swift','ARKit','CoreML','Firebase'], collabs: [{n:'Aiden Park',r:'Backend & Cloud',c:'#3D5A80,#98C1D9',i:'AP'},{n:'Sofia Rodriguez',r:'UX Design',c:'#D84797,#F09ABC',i:'SR'},{n:'Tyler Brooks',r:'ML & Computer Vision',c:'#7C6AEF,#C084FC',i:'TB'}], views:'1.2K', likes:'89', comments:'23' },
+      { name: 'Wavelength', grad: 'linear-gradient(135deg,#7B2FBE,#4A90D9)', desc: 'A real-time music collaboration platform where musicians can jam together remotely with near-zero latency. Built for bedroom producers who want to feel like they\'re in the same room.', tags: ['React','WebRTC','Tone.js','Node'], collabs: [{n:'Leo Tanaka',r:'Audio Engineering',c:'#CB4B16,#F5A623',i:'LT'},{n:'Nina Ross',r:'Frontend',c:'#2D936C,#47B5A0',i:'NR'}], views:'2.4K', likes:'156', comments:'42' },
+      { name: 'Carbon Tracker', grad: 'linear-gradient(135deg,#2D936C,#47B5A0)', desc: 'A personal emissions dashboard that connects to your bank and transit apps to estimate your carbon footprint in real time. Beautiful data viz that makes sustainability feel tangible.', tags: ['Python','D3.js','Plaid API','Flask'], collabs: [{n:'Raj Patel',r:'Data Science',c:'#F4845F,#F7B267',i:'RP'}], views:'890', likes:'67', comments:'12' },
+      { name: 'Type Studio', grad: 'linear-gradient(135deg,#E07A5F,#F2CC8F)', desc: 'A variable font playground where designers can generate, tweak, and export custom typefaces. Drag sliders to morph between weights, widths, and optical sizes.', tags: ['TypeScript','Canvas API','OpenType.js'], collabs: [{n:'Emma Liu',r:'Typography',c:'#7B2FBE,#4A90D9',i:'EL'},{n:'Jake Moreno',r:'WebGL',c:'#3D5A80,#98C1D9',i:'JM'}], views:'3.1K', likes:'241', comments:'58' },
+      { name: 'Mood Board AI', grad: 'linear-gradient(135deg,#D84797,#F09ABC)', desc: 'Drop in a vague creative brief and get a curated mood board with color palettes, typography suggestions, and reference imagery. Uses CLIP to understand aesthetic intent.', tags: ['Python','CLIP','Next.js','Supabase'], collabs: [{n:'Kira Wong',r:'ML Engineering',c:'#0F766E,#5EEAD4',i:'KW'}], views:'5.6K', likes:'389', comments:'91' },
+      { name: 'Transit', grad: 'linear-gradient(135deg,#3D5A80,#98C1D9)', desc: 'A public transit UX concept reimagining how cities present real-time bus and train data. Focused on accessibility and reducing cognitive load for daily commuters.', tags: ['Figma','React Native','MapboxGL'], collabs: [{n:'Dani Okafor',r:'UX Research',c:'#CB4B16,#F5A623',i:'DO'},{n:'Sam Lee',r:'iOS',c:'#7C6AEF,#C084FC',i:'SL'}], views:'1.8K', likes:'134', comments:'37' },
+      { name: 'Pocket Chef', grad: 'linear-gradient(135deg,#CB4B16,#F5A623)', desc: 'Point your camera at your fridge. Get recipe suggestions based on what you have. Uses object detection to identify ingredients and matches them against a recipe graph.', tags: ['Swift','CoreML','YOLOv5','GraphQL'], collabs: [{n:'Amy Chen',r:'Computer Vision',c:'#D84797,#F09ABC',i:'AC'},{n:'Tom Rivera',r:'Backend',c:'#2D936C,#47B5A0',i:'TR'}], views:'4.2K', likes:'278', comments:'64' },
+      { name: 'Study Circles', grad: 'linear-gradient(135deg,#7C6AEF,#C084FC)', desc: 'A study group matching app for university students. Swipe-style matching based on course schedule, study style, and campus location. Like Tinder but for study partners.', tags: ['Flutter','Firebase','Dart'], collabs: [{n:'Lisa Park',r:'Product Design',c:'#F4845F,#F7B267',i:'LP'}], views:'980', likes:'72', comments:'19' },
+      { name: 'Drift', grad: 'linear-gradient(135deg,#0F766E,#5EEAD4)', desc: 'An ambient soundscape generator that creates unique audio environments by layering field recordings with generative synthesis. Built for focus, sleep, or just vibing.', tags: ['Web Audio API','React','TensorFlow.js'], collabs: [{n:'Kai Nakamura',r:'Sound Design',c:'#7B2FBE,#4A90D9',i:'KN'},{n:'Ava Santos',r:'Generative Art',c:'#E07A5F,#F2CC8F',i:'AS'}], views:'2.1K', likes:'167', comments:'44' },
+    ];
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
+      // scroll to top
+      document.querySelector('.app-content').scrollTop = 0;
+    }
+
+    // Project modal
+    function openModal(idx) {
+      const p = projects[idx];
+      if (!p) return;
+      document.getElementById('modalMedia').style.background = p.grad;
+      document.getElementById('modalTitle').innerHTML = p.name + ' <svg class="verified-badge" viewBox="0 0 20 20" width="18" height="18"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      document.getElementById('modalDesc').textContent = p.desc;
+      document.getElementById('modalTags').innerHTML = p.tags.map(t => `<span class="modal-tag">${t}</span>`).join('');
+      document.getElementById('modalCollabs').innerHTML = p.collabs.map(c => `
+        <div class="modal-collab">
+          <div class="modal-collab-avatar" style="background:linear-gradient(135deg,${c.c})">${c.i}</div>
+          <div class="modal-collab-info"><div class="modal-collab-name">${c.n}</div><div class="modal-collab-role">${c.r}</div></div>
+          <div class="verified-pill"><svg viewBox="0 0 20 20" width="12" height="12"><circle cx="10" cy="10" r="10" fill="#81B29A"/><path d="M6 10.5l2.5 2.5 5.5-6" stroke="white" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Verified</div>
+        </div>
+      `).join('');
+      document.querySelector('.modal-stats').innerHTML = `
+        <div class="modal-stat"><strong>${p.views}</strong> views</div>
+        <div class="modal-stat"><strong>${p.likes}</strong> likes</div>
+        <div class="modal-stat"><strong>${p.comments}</strong> comments</div>
+      `;
+      document.getElementById('modalBackdrop').classList.add('open');
+      document.getElementById('projectModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.remove('open');
+      document.getElementById('projectModal').classList.remove('open');
+    }
+
+    // Attach click handlers to project thumbs
+    document.querySelectorAll('.project-thumb').forEach(thumb => {
+      thumb.addEventListener('click', () => openModal(parseInt(thumb.dataset.project)));
+    });
+
+    // Like toggle
+    function toggleLike(btn) {
+      btn.classList.toggle('liked');
+      const span = btn.querySelector('span');
+      let count = parseInt(span.textContent);
+      span.textContent = btn.classList.contains('liked') ? count + 1 : count - 1;
+    }
+
+    // Category pill toggle
+    document.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

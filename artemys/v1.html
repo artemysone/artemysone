@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artemys V1 — Project Gallery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-page: #2C2825;
+      --bg-screen: #FAF7F2;
+      --bg-card: #FFFFFF;
+      --bg-input: #F3EDE4;
+      --text-primary: #2D2A26;
+      --text-secondary: #8C8580;
+      --text-tertiary: #B8B0A8;
+      --accent: #E07A5F;
+      --accent-hover: #D06A4F;
+      --accent-soft: rgba(224,122,95,0.08);
+      --gold: #F2CC8F;
+      --border: #E8E2D9;
+      --border-light: #F0EBE3;
+      --font-display: 'Bricolage Grotesque', sans-serif;
+      --font-serif: 'Source Serif 4', Georgia, serif;
+      --font-body: 'DM Sans', system-ui, sans-serif;
+      --phone-w: 390px;
+      --phone-h: 844px;
+      --nav-h: 72px;
+      --status-h: 54px;
+      --r-phone: 50px;
+    }
+
+    html { height: 100%; }
+
+    body {
+      min-height: 100%;
+      background: var(--bg-page);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-body);
+      color: var(--text-primary);
+      padding: 40px 20px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 32px;
+      animation: fadeUp 0.8s ease both;
+    }
+    .page-header h1 {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 500;
+      color: #FAF7F2;
+      letter-spacing: 0.04em;
+    }
+    .page-header p {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: #8C8580;
+      margin-top: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Phone frame ── */
+    .phone-frame {
+      width: var(--phone-w);
+      height: var(--phone-h);
+      border-radius: var(--r-phone);
+      background: #000;
+      padding: 8px;
+      position: relative;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.4),
+        0 10px 30px rgba(0,0,0,0.3),
+        inset 0 0 0 1px rgba(255,255,255,0.06);
+      animation: fadeUp 0.8s 0.15s ease both;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: calc(var(--r-phone) - 8px);
+      background: var(--bg-screen);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .dynamic-island {
+      width: 126px;
+      height: 36px;
+      background: #000;
+      border-radius: 18px;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      height: var(--status-h);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 28px 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex-shrink: 0;
+      z-index: 40;
+    }
+    .status-bar .time { font-size: 15px; font-weight: 600; }
+    .status-icons { display: flex; gap: 5px; align-items: center; }
+    .status-icons svg { width: 16px; height: 16px; }
+
+    /* Onboarding status bar is light-on-dark */
+    .status-bar.light { color: rgba(255,255,255,0.8); }
+
+    /* ── App content ── */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .app-content::-webkit-scrollbar { display: none; }
+
+    .tab-panel { display: none; min-height: 100%; }
+    .tab-panel.active { display: block; }
+
+    /* ── App bar ── */
+    .app-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 20px 12px;
+      position: sticky;
+      top: 0;
+      background: var(--bg-screen);
+      z-index: 10;
+    }
+    .app-bar-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .app-bar-icon {
+      width: 24px;
+      height: 24px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .app-bar-icon:hover { color: var(--accent); }
+
+    /* ── Bottom navigation ── */
+    .bottom-nav {
+      height: var(--nav-h);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 10px;
+      background: var(--bg-screen);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 20;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      transition: color 0.2s;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      padding: 0;
+    }
+    .nav-item svg { width: 24px; height: 24px; transition: transform 0.2s; }
+    .nav-item span { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; }
+    .nav-item.active { color: var(--accent); }
+    .nav-item.active svg { transform: scale(1.05); }
+    .nav-item.create-btn { color: var(--text-primary); }
+    .nav-item.create-btn svg {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 12px;
+      padding: 4px;
+      color: white;
+    }
+
+    /* ── Onboarding screens ── */
+    .onboarding {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .onboarding.hidden {
+      opacity: 0;
+      transform: scale(1.02);
+      pointer-events: none;
+    }
+
+    /* Welcome screen */
+    .welcome-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(165deg, #2D2A26 0%, #3D302A 40%, #4A3728 70%, #2D2A26 100%);
+      padding: 40px 32px;
+      text-align: center;
+      border-radius: calc(var(--r-phone) - 8px);
+    }
+    .welcome-logo {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 600;
+      color: #FAF7F2;
+      letter-spacing: 0.03em;
+      margin-bottom: 12px;
+    }
+    .welcome-tagline {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      color: rgba(250,247,242,0.6);
+      line-height: 1.5;
+      margin-bottom: 48px;
+      max-width: 260px;
+    }
+    .welcome-btn {
+      width: 100%;
+      max-width: 280px;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      background: var(--accent);
+      color: white;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      margin-bottom: 16px;
+    }
+    .welcome-btn:hover { background: var(--accent-hover); }
+    .welcome-btn:active { transform: scale(0.98); }
+    .welcome-btn.secondary {
+      background: rgba(250,247,242,0.1);
+      border: 1.5px solid rgba(250,247,242,0.2);
+    }
+    .welcome-btn.secondary:hover { background: rgba(250,247,242,0.15); }
+    .welcome-dots {
+      display: flex;
+      gap: 8px;
+      margin-top: 40px;
+    }
+    .welcome-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(250,247,242,0.2);
+    }
+    .welcome-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+
+    /* Sign up screen */
+    .signup-screen {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      background: var(--bg-screen);
+      padding: 0;
+      border-radius: calc(var(--r-phone) - 8px);
+    }
+    .signup-screen.active { display: flex; }
+    .signup-header {
+      padding: 70px 28px 0;
+    }
+    .signup-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .signup-subtitle {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .signup-form {
+      padding: 32px 28px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .signup-field label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .signup-field input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-card);
+      font-family: var(--font-body);
+      font-size: 16px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .signup-field input:focus { border-color: var(--accent); }
+    .signup-field input::placeholder { color: var(--text-tertiary); }
+    .signup-avatar-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .signup-avatar-preview {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--gold));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+    .signup-avatar-upload {
+      padding: 10px 18px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .signup-avatar-upload:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .signup-spacer { flex: 1; }
+    .signup-continue {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      background: var(--accent);
+      color: white;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      margin-bottom: 24px;
+    }
+    .signup-continue:hover { background: var(--accent-hover); }
+    .signup-continue:active { transform: scale(0.98); }
+
+    /* Hide welcome when signup is showing */
+    .welcome-screen.hidden { display: none; }
+
+    /* ── Profile tab ── */
+    .profile-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 20px 0;
+    }
+    .avatar-ring {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--accent), var(--gold));
+    }
+    .avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #E07A5F, #F2CC8F);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 600;
+      color: white;
+      border: 3px solid var(--bg-screen);
+    }
+    .profile-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .profile-handle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+    .profile-bio {
+      font-size: 14px;
+      color: var(--text-primary);
+      text-align: center;
+      line-height: 1.5;
+      margin-top: 10px;
+      max-width: 280px;
+    }
+    .profile-stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 18px;
+      padding-bottom: 18px;
+    }
+    .stat { display: flex; flex-direction: column; align-items: center; }
+    .stat-num { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+    .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+    .profile-actions {
+      display: flex;
+      gap: 10px;
+      width: calc(100% - 40px);
+      margin: 0 auto;
+    }
+    .edit-profile-btn {
+      flex: 1;
+      padding: 9px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .edit-profile-btn:hover {
+      background: var(--text-primary);
+      color: var(--bg-screen);
+      border-color: var(--text-primary);
+    }
+    .share-profile-btn {
+      padding: 9px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: none;
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+    }
+    .share-profile-btn:hover {
+      background: var(--text-primary);
+      color: var(--bg-screen);
+      border-color: var(--text-primary);
+    }
+    .share-profile-btn svg { width: 16px; height: 16px; }
+
+    .grid-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 20px 12px;
+    }
+    .grid-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .grid-count {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      padding: 0 2px 2px;
+    }
+    .project-thumb {
+      aspect-ratio: 1;
+      position: relative;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .project-thumb .thumb-bg {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease;
+    }
+    .project-thumb:hover .thumb-bg { transform: scale(1.05); }
+    .thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.3s;
+    }
+    .project-thumb:hover .thumb-overlay { background: rgba(0,0,0,0.35); }
+    .thumb-overlay .thumb-name,
+    .thumb-overlay .thumb-play {
+      opacity: 0;
+      transform: translateY(6px);
+      transition: all 0.3s;
+    }
+    .project-thumb:hover .thumb-overlay .thumb-name,
+    .project-thumb:hover .thumb-overlay .thumb-play {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .thumb-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .thumb-play svg { width: 28px; height: 28px; color: white; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3)); }
+
+    .thumb-ui {
+      position: absolute;
+      inset: 0;
+      padding: 20%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      justify-content: center;
+    }
+    .thumb-line { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.35); width: 70%; }
+    .thumb-line.short { width: 45%; }
+    .thumb-line.med { width: 58%; }
+    .thumb-circle { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.3); margin-top: 4px; }
+    .thumb-rect { width: 36px; height: 24px; border-radius: 6px; background: rgba(255,255,255,0.25); }
+
+    /* ── Feed tab ── */
+    .feed-post {
+      background: var(--bg-card);
+      margin-bottom: 8px;
+    }
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+    }
+    .post-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .post-user-info { flex: 1; }
+    .post-user-name {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .post-user-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+    .post-follow-btn {
+      padding: 6px 16px;
+      border-radius: 8px;
+      border: 1.5px solid var(--accent);
+      background: none;
+      color: var(--accent);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .post-follow-btn:hover, .post-follow-btn.following {
+      background: var(--accent);
+      color: white;
+    }
+    .post-follow-btn.following { border-color: var(--accent); }
+    .post-media {
+      width: 100%;
+      aspect-ratio: 4/3;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .post-play {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+    .post-media:hover .post-play { transform: scale(1.08); }
+    .post-play svg { width: 24px; height: 24px; color: white; margin-left: 2px; }
+    .post-actions {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px 8px;
+      gap: 16px;
+    }
+    .post-action {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 0;
+      transition: color 0.2s;
+    }
+    .post-action:hover { color: var(--accent); }
+    .post-action svg { width: 22px; height: 22px; }
+    .post-action.liked { color: #E25555; }
+    .post-action.liked svg { fill: #E25555; }
+    .post-body { padding: 4px 16px 16px; }
+    .post-title {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .post-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 4px 16px 8px;
+    }
+    .post-tag {
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--bg-input);
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .post-collabs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .collab-stack { display: flex; }
+    .collab-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      color: white;
+      margin-left: -6px;
+    }
+    .collab-dot:first-child { margin-left: 0; }
+
+    /* ── Create tab ── */
+    .create-page { padding: 0 20px 40px; }
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 36px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .upload-area:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .upload-area svg { width: 36px; height: 36px; color: var(--text-tertiary); }
+    .upload-area p { font-size: 14px; color: var(--text-secondary); text-align: center; line-height: 1.5; }
+    .upload-hint {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-card);
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus { border-color: var(--accent); }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--text-tertiary); }
+    .form-textarea { resize: none; height: 100px; line-height: 1.5; }
+    .form-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+    .form-tag {
+      padding: 7px 14px;
+      border-radius: 8px;
+      background: var(--bg-input);
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      font-family: var(--font-body);
+      transition: all 0.2s;
+    }
+    .form-tag.selected {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .collab-input-wrapper {
+      position: relative;
+    }
+    .collab-tagged {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .collab-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px 6px 6px;
+      border-radius: 20px;
+      background: var(--bg-input);
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+    .collab-chip-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      color: white;
+    }
+    .collab-chip-remove {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.08);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 2px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    .post-btn {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: white;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      margin-top: 8px;
+    }
+    .post-btn:hover { background: var(--accent-hover); }
+    .post-btn:active { transform: scale(0.98); }
+
+    /* ── Project modal ── */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+    .project-modal {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 88%;
+      background: var(--bg-screen);
+      border-radius: 24px 24px 0 0;
+      z-index: 31;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .project-modal.open { transform: translateY(0); }
+    .modal-handle {
+      width: 36px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--border);
+      margin: 10px auto;
+      flex-shrink: 0;
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.06);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      transition: background 0.2s;
+    }
+    .modal-close:hover { background: rgba(0,0,0,0.1); }
+    .modal-close svg { width: 16px; height: 16px; color: var(--text-primary); }
+    .modal-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .modal-scroll::-webkit-scrollbar { display: none; }
+    .modal-media {
+      width: 100%;
+      aspect-ratio: 16/10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .modal-media .post-play {
+      width: 60px;
+      height: 60px;
+    }
+    .modal-media .post-play svg { width: 26px; height: 26px; }
+    .modal-body { padding: 20px; }
+    .modal-title {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .modal-creator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    .modal-creator-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: white;
+    }
+    .modal-desc {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      margin-bottom: 20px;
+    }
+    .modal-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+    .modal-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .modal-tag {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--bg-input);
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .modal-collabs {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .modal-collab {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-collab-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+    .modal-collab-info { flex: 1; }
+    .modal-collab-name { font-size: 14px; font-weight: 600; }
+    .modal-collab-role { font-size: 12px; color: var(--text-secondary); }
+    .modal-stats {
+      display: flex;
+      gap: 20px;
+      padding: 16px 0;
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 20px;
+    }
+    .modal-stat { font-size: 14px; color: var(--text-secondary); }
+    .modal-stat strong { color: var(--text-primary); font-weight: 600; }
+    .modal-action-bar {
+      display: flex;
+      gap: 10px;
+    }
+    .modal-action-btn {
+      flex: 1;
+      padding: 13px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: none;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text-primary);
+    }
+    .modal-action-btn:hover {
+      background: var(--text-primary);
+      color: var(--bg-screen);
+      border-color: var(--text-primary);
+    }
+    .modal-action-btn svg { width: 18px; height: 18px; }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 420px) {
+      .page-header { display: none; }
+      .phone-frame {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+      .phone-screen { border-radius: 0; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <h1>artemys</h1>
+    <p>v1 — project gallery</p>
+  </div>
+
+  <div class="phone-frame">
+    <div class="phone-screen">
+      <div class="dynamic-island"></div>
+
+      <!-- ═══ ONBOARDING ═══ -->
+      <div class="onboarding" id="onboarding">
+        <!-- Welcome -->
+        <div class="welcome-screen" id="welcomeScreen">
+          <div class="status-bar light" style="position:absolute;top:0;left:0;right:0;">
+            <span class="time">9:41</span>
+            <div class="status-icons">
+              <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="4" width="3" height="8" rx="0.5"/><rect x="4.5" y="2.5" width="3" height="9.5" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13.5" y="0" width="3" height="12" rx="0.5"/></svg>
+              <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 4.5C3.5 1.5 7 0 8 0s4.5 1.5 7 4.5L8 12 1 4.5z" opacity="0.95"/></svg>
+              <svg viewBox="0 0 28 13" fill="currentColor"><rect x="0" y="0.5" width="23" height="12" rx="2.5" stroke="currentColor" stroke-width="1" fill="none"/><rect x="24" y="4" width="2.5" height="5" rx="1"/><rect x="2" y="2.5" width="17" height="8" rx="1"/></svg>
+            </div>
+          </div>
+          <div class="welcome-logo">artemys</div>
+          <div class="welcome-tagline">Show what you've built.<br>Own your story.</div>
+          <button class="welcome-btn" onclick="showSignup()">Get Started</button>
+          <button class="welcome-btn secondary" onclick="skipOnboarding()">I have an account</button>
+          <div class="welcome-dots">
+            <div class="welcome-dot active"></div>
+            <div class="welcome-dot"></div>
+          </div>
+        </div>
+
+        <!-- Sign Up -->
+        <div class="signup-screen" id="signupScreen">
+          <div class="status-bar" style="position:relative;z-index:5;">
+            <span class="time">9:41</span>
+            <div class="status-icons">
+              <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="4" width="3" height="8" rx="0.5"/><rect x="4.5" y="2.5" width="3" height="9.5" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13.5" y="0" width="3" height="12" rx="0.5"/></svg>
+              <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 4.5C3.5 1.5 7 0 8 0s4.5 1.5 7 4.5L8 12 1 4.5z" opacity="0.95"/></svg>
+              <svg viewBox="0 0 28 13" fill="currentColor"><rect x="0" y="0.5" width="23" height="12" rx="2.5" stroke="currentColor" stroke-width="1" fill="none"/><rect x="24" y="4" width="2.5" height="5" rx="1"/><rect x="2" y="2.5" width="17" height="8" rx="1"/></svg>
+            </div>
+          </div>
+          <div class="signup-header">
+            <div class="signup-title">Create your profile</div>
+            <div class="signup-subtitle">This is how other builders will find you.</div>
+          </div>
+          <div class="signup-form">
+            <div class="signup-field">
+              <label>Avatar</label>
+              <div class="signup-avatar-row">
+                <div class="signup-avatar-preview" id="signupAvatarPreview">?</div>
+                <button class="signup-avatar-upload">Upload photo</button>
+              </div>
+            </div>
+            <div class="signup-field">
+              <label>Full Name</label>
+              <input type="text" placeholder="Maya Chen" id="signupName" oninput="updateAvatarPreview()">
+            </div>
+            <div class="signup-field">
+              <label>Handle</label>
+              <input type="text" placeholder="@mayachen" id="signupHandle">
+            </div>
+            <div class="signup-field">
+              <label>Bio</label>
+              <input type="text" placeholder="What are you building?">
+            </div>
+            <div class="signup-spacer"></div>
+            <button class="signup-continue" onclick="skipOnboarding()">Continue</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status bar (main app) -->
+      <div class="status-bar" id="mainStatusBar">
+        <span class="time">9:41</span>
+        <div class="status-icons">
+          <svg viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="4" width="3" height="8" rx="0.5"/><rect x="4.5" y="2.5" width="3" height="9.5" rx="0.5"/><rect x="9" y="1" width="3" height="11" rx="0.5"/><rect x="13.5" y="0" width="3" height="12" rx="0.5"/></svg>
+          <svg viewBox="0 0 16 12" fill="currentColor"><path d="M1 4.5C3.5 1.5 7 0 8 0s4.5 1.5 7 4.5L8 12 1 4.5z" opacity="0.95"/></svg>
+          <svg viewBox="0 0 28 13" fill="currentColor"><rect x="0" y="0.5" width="23" height="12" rx="2.5" stroke="currentColor" stroke-width="1" fill="none"/><rect x="24" y="4" width="2.5" height="5" rx="1"/><rect x="2" y="2.5" width="17" height="8" rx="1"/></svg>
+        </div>
+      </div>
+
+      <!-- App content area -->
+      <div class="app-content">
+
+        <!-- ═══ PROFILE TAB ═══ -->
+        <div class="tab-panel active" id="tab-profile">
+          <div class="app-bar">
+            <span class="app-bar-title">artemys</span>
+            <svg class="app-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </div>
+
+          <div class="profile-header">
+            <div class="avatar-ring"><div class="avatar">MC</div></div>
+            <div class="profile-name">Maya Chen</div>
+            <div class="profile-handle">@mayachen</div>
+            <div class="profile-bio">Building at the intersection of design & code. CS @ Stanford '25.</div>
+            <div class="profile-stats">
+              <div class="stat"><span class="stat-num">9</span><span class="stat-label">Projects</span></div>
+              <div class="stat"><span class="stat-num">34</span><span class="stat-label">Collaborators</span></div>
+              <div class="stat"><span class="stat-num">8.2K</span><span class="stat-label">Views</span></div>
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <button class="edit-profile-btn">Edit Profile</button>
+            <button class="share-profile-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+            </button>
+          </div>
+
+          <div class="grid-header">
+            <span class="grid-title">Projects</span>
+            <span class="grid-count">9 projects</span>
+          </div>
+
+          <div class="project-grid">
+            <div class="project-thumb" data-project="0">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#F4845F,#F7B267)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-line short"></div><div class="thumb-circle"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Spatial Notes</span></div>
+            </div>
+            <div class="project-thumb" data-project="1">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#7B2FBE,#4A90D9)">
+                <div class="thumb-ui"><div class="thumb-circle"></div><div class="thumb-line"></div><div class="thumb-line med"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Wavelength</span></div>
+            </div>
+            <div class="project-thumb" data-project="2">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#2D936C,#47B5A0)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-rect"></div><div class="thumb-line short"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Carbon Tracker</span></div>
+            </div>
+            <div class="project-thumb" data-project="3">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#E07A5F,#F2CC8F)">
+                <div class="thumb-ui"><div class="thumb-line med"></div><div class="thumb-line"></div><div class="thumb-line short"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Type Studio</span></div>
+            </div>
+            <div class="project-thumb" data-project="4">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#D84797,#F09ABC)">
+                <div class="thumb-ui"><div class="thumb-circle"></div><div class="thumb-line"></div><div class="thumb-circle"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Mood Board AI</span></div>
+            </div>
+            <div class="project-thumb" data-project="5">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#3D5A80,#98C1D9)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-line med"></div><div class="thumb-rect"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Transit</span></div>
+            </div>
+            <div class="project-thumb" data-project="6">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#CB4B16,#F5A623)">
+                <div class="thumb-ui"><div class="thumb-rect"></div><div class="thumb-line"></div><div class="thumb-line short"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Pocket Chef</span></div>
+            </div>
+            <div class="project-thumb" data-project="7">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#7C6AEF,#C084FC)">
+                <div class="thumb-ui"><div class="thumb-line short"></div><div class="thumb-circle"></div><div class="thumb-line"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Study Circles</span></div>
+            </div>
+            <div class="project-thumb" data-project="8">
+              <div class="thumb-bg" style="background:linear-gradient(135deg,#0F766E,#5EEAD4)">
+                <div class="thumb-ui"><div class="thumb-line"></div><div class="thumb-line med"></div><div class="thumb-circle"></div></div>
+              </div>
+              <div class="thumb-overlay"><svg class="thumb-play" viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg><span class="thumb-name">Drift</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ FEED TAB ═══ -->
+        <div class="tab-panel" id="tab-feed">
+          <div class="app-bar">
+            <span class="app-bar-title">Feed</span>
+            <svg class="app-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </div>
+
+          <!-- Post 1 -->
+          <div class="feed-post">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#3D5A80,#98C1D9)">JR</div>
+              <div class="post-user-info">
+                <div class="post-user-name">Jordan Rivera</div>
+                <div class="post-user-meta">@jordanr · 2h</div>
+              </div>
+              <button class="post-follow-btn" onclick="toggleFollow(this)">Follow</button>
+            </div>
+            <div class="post-media" style="background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)">
+              <div class="post-play"><svg viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg></div>
+            </div>
+            <div class="post-actions">
+              <button class="post-action like-btn" onclick="toggleLike(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span>234</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>18</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></button>
+            </div>
+            <div class="post-body">
+              <div class="post-title">Halo</div>
+              <div class="post-desc">A minimal smart home dashboard that adapts its layout based on time of day and your routines. Built with SwiftUI.</div>
+            </div>
+            <div class="post-tags">
+              <span class="post-tag">SwiftUI</span>
+              <span class="post-tag">HomeKit</span>
+              <span class="post-tag">iOS</span>
+            </div>
+            <div class="post-collabs">
+              <div class="collab-stack">
+                <div class="collab-dot" style="background:#E07A5F">AP</div>
+                <div class="collab-dot" style="background:#7C6AEF">LK</div>
+                <div class="collab-dot" style="background:#2D936C">TN</div>
+              </div>
+              <span>3 collaborators</span>
+            </div>
+          </div>
+
+          <!-- Post 2 -->
+          <div class="feed-post">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#D84797,#F09ABC)">PS</div>
+              <div class="post-user-info">
+                <div class="post-user-name">Priya Sharma</div>
+                <div class="post-user-meta">@priyabuilds · 5h</div>
+              </div>
+              <button class="post-follow-btn following" onclick="toggleFollow(this)">Following</button>
+            </div>
+            <div class="post-media" style="background:linear-gradient(135deg,#264653,#2a9d8f,#e9c46a)">
+              <div class="post-play"><svg viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg></div>
+            </div>
+            <div class="post-actions">
+              <button class="post-action like-btn" onclick="toggleLike(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span>412</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>31</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></button>
+            </div>
+            <div class="post-body">
+              <div class="post-title">Bloom</div>
+              <div class="post-desc">Plant care companion that uses your phone camera to diagnose issues and track growth over time. Computer vision meets green thumbs.</div>
+            </div>
+            <div class="post-tags">
+              <span class="post-tag">React Native</span>
+              <span class="post-tag">TensorFlow</span>
+              <span class="post-tag">Mobile</span>
+            </div>
+            <div class="post-collabs">
+              <div class="collab-stack">
+                <div class="collab-dot" style="background:#F4845F">AR</div>
+                <div class="collab-dot" style="background:#3D5A80">KW</div>
+              </div>
+              <span>2 collaborators</span>
+            </div>
+          </div>
+
+          <!-- Post 3 -->
+          <div class="feed-post">
+            <div class="post-header">
+              <div class="post-avatar" style="background:linear-gradient(135deg,#CB4B16,#F5A623)">MK</div>
+              <div class="post-user-info">
+                <div class="post-user-name">Marcus Kim</div>
+                <div class="post-user-meta">@marcuskim · 1d</div>
+              </div>
+              <button class="post-follow-btn" onclick="toggleFollow(this)">Follow</button>
+            </div>
+            <div class="post-media" style="background:linear-gradient(135deg,#0d1b2a,#1b263b,#415a77)">
+              <div class="post-play"><svg viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg></div>
+            </div>
+            <div class="post-actions">
+              <button class="post-action like-btn" onclick="toggleLike(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span>89</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>7</span></button>
+              <button class="post-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg></button>
+            </div>
+            <div class="post-body">
+              <div class="post-title">Offset</div>
+              <div class="post-desc">A marketplace concept for micro carbon credits. Track, buy, and retire credits from verified reforestation projects.</div>
+            </div>
+            <div class="post-tags">
+              <span class="post-tag">Next.js</span>
+              <span class="post-tag">Solidity</span>
+              <span class="post-tag">Design</span>
+            </div>
+            <div class="post-collabs">
+              <div class="collab-stack">
+                <div class="collab-dot" style="background:#7B2FBE">SL</div>
+                <div class="collab-dot" style="background:#E07A5F">JT</div>
+                <div class="collab-dot" style="background:#0F766E">RH</div>
+                <div class="collab-dot" style="background:#D84797">NP</div>
+              </div>
+              <span>4 collaborators</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ CREATE TAB ═══ -->
+        <div class="tab-panel" id="tab-create">
+          <div class="app-bar">
+            <span class="app-bar-title">New Project</span>
+            <span></span>
+          </div>
+          <div class="create-page">
+            <div class="upload-area">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polygon points="8,17 8,10.5 13,7 18,10.5 18,17" fill="none"/><circle cx="7" cy="7" r="1.5"/><path d="M2 13l5-4 4 4 3-2 6 4"/></svg>
+              <p>Upload a demo video or screenshots</p>
+              <span class="upload-hint">MP4, MOV up to 30s · PNG, JPG</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Project Title</label>
+              <input class="form-input" type="text" placeholder="What did you build?">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-textarea" placeholder="Tell the story behind this project..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tags</label>
+              <div class="form-tags">
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Design</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Mobile</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Web</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">AI / ML</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Hardware</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Music</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Film</button>
+                <button class="form-tag" onclick="this.classList.toggle('selected')">Games</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Collaborators</label>
+              <div class="collab-input-wrapper">
+                <input class="form-input" type="text" placeholder="Search people to tag...">
+                <div class="collab-tagged">
+                  <div class="collab-chip">
+                    <div class="collab-chip-avatar" style="background:linear-gradient(135deg,#3D5A80,#98C1D9)">AP</div>
+                    Aiden Park
+                    <button class="collab-chip-remove">&times;</button>
+                  </div>
+                  <div class="collab-chip">
+                    <div class="collab-chip-avatar" style="background:linear-gradient(135deg,#D84797,#F09ABC)">SR</div>
+                    Sofia R.
+                    <button class="collab-chip-remove">&times;</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="post-btn">Post Project</button>
+          </div>
+        </div>
+
+      </div><!-- /app-content -->
+
+      <!-- Modal backdrop -->
+      <div class="modal-backdrop" id="modalBackdrop" onclick="closeModal()"></div>
+
+      <!-- Project detail modal -->
+      <div class="project-modal" id="projectModal">
+        <div class="modal-handle"></div>
+        <button class="modal-close" onclick="closeModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <div class="modal-scroll">
+          <div class="modal-media" id="modalMedia" style="background:linear-gradient(135deg,#F4845F,#F7B267)">
+            <div class="post-play"><svg viewBox="0 0 24 24" fill="white"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+          <div class="modal-body">
+            <div class="modal-title" id="modalTitle">Spatial Notes</div>
+            <div class="modal-creator">
+              <div class="modal-creator-avatar" style="background:linear-gradient(135deg,#E07A5F,#F2CC8F)">MC</div>
+              Maya Chen · @mayachen
+            </div>
+            <div class="modal-desc" id="modalDesc">An AR-powered note-taking app that lets students pin notes to physical locations on campus. Walk into a lecture hall and see your notes from last class floating above your desk.</div>
+
+            <div class="modal-section-title">Tech Stack</div>
+            <div class="modal-tags" id="modalTags">
+              <span class="modal-tag">Swift</span>
+              <span class="modal-tag">ARKit</span>
+              <span class="modal-tag">CoreML</span>
+              <span class="modal-tag">Firebase</span>
+            </div>
+
+            <div class="modal-section-title">Collaborators</div>
+            <div class="modal-collabs" id="modalCollabs">
+              <div class="modal-collab">
+                <div class="modal-collab-avatar" style="background:linear-gradient(135deg,#3D5A80,#98C1D9)">AP</div>
+                <div class="modal-collab-info"><div class="modal-collab-name">Aiden Park</div><div class="modal-collab-role">Backend & Cloud</div></div>
+              </div>
+              <div class="modal-collab">
+                <div class="modal-collab-avatar" style="background:linear-gradient(135deg,#D84797,#F09ABC)">SR</div>
+                <div class="modal-collab-info"><div class="modal-collab-name">Sofia Rodriguez</div><div class="modal-collab-role">UX Design</div></div>
+              </div>
+              <div class="modal-collab">
+                <div class="modal-collab-avatar" style="background:linear-gradient(135deg,#7C6AEF,#C084FC)">TB</div>
+                <div class="modal-collab-info"><div class="modal-collab-name">Tyler Brooks</div><div class="modal-collab-role">ML & Computer Vision</div></div>
+              </div>
+            </div>
+
+            <div class="modal-stats">
+              <div class="modal-stat"><strong>1.2K</strong> views</div>
+              <div class="modal-stat"><strong>89</strong> likes</div>
+              <div class="modal-stat"><strong>23</strong> comments</div>
+            </div>
+
+            <div class="modal-action-bar">
+              <button class="modal-action-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+                Like
+              </button>
+              <button class="modal-action-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+                Share
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom navigation -->
+      <nav class="bottom-nav">
+        <button class="nav-item" data-tab="feed" onclick="switchTab('feed')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Feed</span>
+        </button>
+        <button class="nav-item create-btn" data-tab="create" onclick="switchTab('create')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span></span>
+        </button>
+        <button class="nav-item active" data-tab="profile" onclick="switchTab('profile')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6"/></svg>
+          <span>Profile</span>
+        </button>
+      </nav>
+
+    </div><!-- /phone-screen -->
+  </div><!-- /phone-frame -->
+
+  <script>
+    // Project data
+    const projects = [
+      { name: 'Spatial Notes', grad: 'linear-gradient(135deg,#F4845F,#F7B267)', desc: 'An AR-powered note-taking app that lets students pin notes to physical locations on campus. Walk into a lecture hall and see your notes from last class floating above your desk.', tags: ['Swift','ARKit','CoreML','Firebase'], collabs: [{n:'Aiden Park',r:'Backend & Cloud',c:'#3D5A80,#98C1D9',i:'AP'},{n:'Sofia Rodriguez',r:'UX Design',c:'#D84797,#F09ABC',i:'SR'},{n:'Tyler Brooks',r:'ML & Computer Vision',c:'#7C6AEF,#C084FC',i:'TB'}], views:'1.2K', likes:'89', comments:'23' },
+      { name: 'Wavelength', grad: 'linear-gradient(135deg,#7B2FBE,#4A90D9)', desc: 'A real-time music collaboration platform where musicians can jam together remotely with near-zero latency. Built for bedroom producers who want to feel like they\'re in the same room.', tags: ['React','WebRTC','Tone.js','Node'], collabs: [{n:'Leo Tanaka',r:'Audio Engineering',c:'#CB4B16,#F5A623',i:'LT'},{n:'Nina Ross',r:'Frontend',c:'#2D936C,#47B5A0',i:'NR'}], views:'2.4K', likes:'156', comments:'42' },
+      { name: 'Carbon Tracker', grad: 'linear-gradient(135deg,#2D936C,#47B5A0)', desc: 'A personal emissions dashboard that connects to your bank and transit apps to estimate your carbon footprint in real time. Beautiful data viz that makes sustainability feel tangible.', tags: ['Python','D3.js','Plaid API','Flask'], collabs: [{n:'Raj Patel',r:'Data Science',c:'#F4845F,#F7B267',i:'RP'}], views:'890', likes:'67', comments:'12' },
+      { name: 'Type Studio', grad: 'linear-gradient(135deg,#E07A5F,#F2CC8F)', desc: 'A variable font playground where designers can generate, tweak, and export custom typefaces. Drag sliders to morph between weights, widths, and optical sizes.', tags: ['TypeScript','Canvas API','OpenType.js'], collabs: [{n:'Emma Liu',r:'Typography',c:'#7B2FBE,#4A90D9',i:'EL'},{n:'Jake Moreno',r:'WebGL',c:'#3D5A80,#98C1D9',i:'JM'}], views:'3.1K', likes:'241', comments:'58' },
+      { name: 'Mood Board AI', grad: 'linear-gradient(135deg,#D84797,#F09ABC)', desc: 'Drop in a vague creative brief and get a curated mood board with color palettes, typography suggestions, and reference imagery. Uses CLIP to understand aesthetic intent.', tags: ['Python','CLIP','Next.js','Supabase'], collabs: [{n:'Kira Wong',r:'ML Engineering',c:'#0F766E,#5EEAD4',i:'KW'}], views:'5.6K', likes:'389', comments:'91' },
+      { name: 'Transit', grad: 'linear-gradient(135deg,#3D5A80,#98C1D9)', desc: 'A public transit UX concept reimagining how cities present real-time bus and train data. Focused on accessibility and reducing cognitive load for daily commuters.', tags: ['Figma','React Native','MapboxGL'], collabs: [{n:'Dani Okafor',r:'UX Research',c:'#CB4B16,#F5A623',i:'DO'},{n:'Sam Lee',r:'iOS',c:'#7C6AEF,#C084FC',i:'SL'}], views:'1.8K', likes:'134', comments:'37' },
+      { name: 'Pocket Chef', grad: 'linear-gradient(135deg,#CB4B16,#F5A623)', desc: 'Point your camera at your fridge. Get recipe suggestions based on what you have. Uses object detection to identify ingredients and matches them against a recipe graph.', tags: ['Swift','CoreML','YOLOv5','GraphQL'], collabs: [{n:'Amy Chen',r:'Computer Vision',c:'#D84797,#F09ABC',i:'AC'},{n:'Tom Rivera',r:'Backend',c:'#2D936C,#47B5A0',i:'TR'}], views:'4.2K', likes:'278', comments:'64' },
+      { name: 'Study Circles', grad: 'linear-gradient(135deg,#7C6AEF,#C084FC)', desc: 'A study group matching app for university students. Swipe-style matching based on course schedule, study style, and campus location. Like Tinder but for study partners.', tags: ['Flutter','Firebase','Dart'], collabs: [{n:'Lisa Park',r:'Product Design',c:'#F4845F,#F7B267',i:'LP'}], views:'980', likes:'72', comments:'19' },
+      { name: 'Drift', grad: 'linear-gradient(135deg,#0F766E,#5EEAD4)', desc: 'An ambient soundscape generator that creates unique audio environments by layering field recordings with generative synthesis. Built for focus, sleep, or just vibing.', tags: ['Web Audio API','React','TensorFlow.js'], collabs: [{n:'Kai Nakamura',r:'Sound Design',c:'#7B2FBE,#4A90D9',i:'KN'},{n:'Ava Santos',r:'Generative Art',c:'#E07A5F,#F2CC8F',i:'AS'}], views:'2.1K', likes:'167', comments:'44' },
+    ];
+
+    // Onboarding
+    function showSignup() {
+      document.getElementById('welcomeScreen').classList.add('hidden');
+      document.getElementById('signupScreen').classList.add('active');
+    }
+
+    function skipOnboarding() {
+      const onboarding = document.getElementById('onboarding');
+      onboarding.classList.add('hidden');
+      setTimeout(() => { onboarding.style.display = 'none'; }, 500);
+    }
+
+    function updateAvatarPreview() {
+      const name = document.getElementById('signupName').value.trim();
+      const preview = document.getElementById('signupAvatarPreview');
+      if (name) {
+        const parts = name.split(' ');
+        preview.textContent = parts.map(p => p[0]).join('').toUpperCase().slice(0, 2);
+      } else {
+        preview.textContent = '?';
+      }
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
+      document.querySelector('.app-content').scrollTop = 0;
+    }
+
+    // Project modal
+    function openModal(idx) {
+      const p = projects[idx];
+      if (!p) return;
+      document.getElementById('modalMedia').style.background = p.grad;
+      document.getElementById('modalTitle').textContent = p.name;
+      document.getElementById('modalDesc').textContent = p.desc;
+      document.getElementById('modalTags').innerHTML = p.tags.map(t => `<span class="modal-tag">${t}</span>`).join('');
+      document.getElementById('modalCollabs').innerHTML = p.collabs.map(c => `
+        <div class="modal-collab">
+          <div class="modal-collab-avatar" style="background:linear-gradient(135deg,${c.c})">${c.i}</div>
+          <div class="modal-collab-info"><div class="modal-collab-name">${c.n}</div><div class="modal-collab-role">${c.r}</div></div>
+        </div>
+      `).join('');
+      document.querySelector('.modal-stats').innerHTML = `
+        <div class="modal-stat"><strong>${p.views}</strong> views</div>
+        <div class="modal-stat"><strong>${p.likes}</strong> likes</div>
+        <div class="modal-stat"><strong>${p.comments}</strong> comments</div>
+      `;
+      document.getElementById('modalBackdrop').classList.add('open');
+      document.getElementById('projectModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.remove('open');
+      document.getElementById('projectModal').classList.remove('open');
+    }
+
+    document.querySelectorAll('.project-thumb').forEach(thumb => {
+      thumb.addEventListener('click', () => openModal(parseInt(thumb.dataset.project)));
+    });
+
+    // Like toggle
+    function toggleLike(btn) {
+      btn.classList.toggle('liked');
+      const span = btn.querySelector('span');
+      let count = parseInt(span.textContent);
+      span.textContent = btn.classList.contains('liked') ? count + 1 : count - 1;
+    }
+
+    // Follow toggle
+    function toggleFollow(btn) {
+      btn.classList.toggle('following');
+      btn.textContent = btn.classList.contains('following') ? 'Following' : 'Follow';
+    }
+  </script>
+</body>
+</html>

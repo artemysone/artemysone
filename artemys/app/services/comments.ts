@@ -1,0 +1,31 @@
+import { supabase } from '@/lib/supabase';
+import type { CommentWithProfile } from '@/types/database';
+
+export async function getComments(projectId: string): Promise<CommentWithProfile[]> {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*, profiles(*)')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as CommentWithProfile[];
+}
+
+export async function addComment(
+  userId: string,
+  projectId: string,
+  text: string,
+): Promise<CommentWithProfile> {
+  const { data, error } = await supabase
+    .from('comments')
+    .insert({ user_id: userId, project_id: projectId, text })
+    .select('*, profiles(*)')
+    .single();
+  if (error) throw error;
+  return data as CommentWithProfile;
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  const { error } = await supabase.from('comments').delete().eq('id', commentId);
+  if (error) throw error;
+}

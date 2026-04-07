@@ -1,0 +1,107 @@
+import { View, Pressable, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
+import type { Project } from '@/types/database';
+
+export const THUMB_GAP = 2;
+
+const GRADIENTS: readonly [string, string][] = [
+  ['#F4845F', '#F7B267'],
+  ['#7B2FBE', '#4A90D9'],
+  ['#2D936C', '#47B5A0'],
+  ['#E07A5F', '#F2CC8F'],
+  ['#D84797', '#F09ABC'],
+  ['#3D5A80', '#98C1D9'],
+  ['#CB4B16', '#F5A623'],
+  ['#7C6AEF', '#C084FC'],
+  ['#0F766E', '#5EEAD4'],
+];
+
+function getGradient(id: string): readonly [string, string] {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
+}
+
+export function ProjectThumb({
+  project,
+  thumbSize,
+  onPress,
+}: {
+  project: Project;
+  thumbSize: number;
+  onPress?: () => void;
+}) {
+  const hasThumbnail = project.thumbnail_url || project.media_url;
+  const imageUri = project.thumbnail_url ?? project.media_url;
+
+  if (hasThumbnail && imageUri) {
+    return (
+      <Pressable style={[styles.thumb, { maxWidth: thumbSize }]} onPress={onPress}>
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.thumbImage}
+          contentFit="cover"
+          transition={200}
+        />
+      </Pressable>
+    );
+  }
+
+  const grad = getGradient(project.id);
+  return (
+    <Pressable style={[styles.thumb, { maxWidth: thumbSize }]} onPress={onPress}>
+      <LinearGradient colors={grad as [string, string]} style={styles.thumbGradient}>
+        <View style={styles.thumbUI}>
+          <View style={styles.thumbLine} />
+          <View style={[styles.thumbLine, { width: '45%' }]} />
+          <View style={styles.thumbCircle} />
+        </View>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+export const thumbStyles = StyleSheet.create({
+  gridRow: {
+    gap: THUMB_GAP,
+    paddingHorizontal: THUMB_GAP,
+  },
+});
+
+const styles = StyleSheet.create({
+  thumb: {
+    flex: 1,
+    aspectRatio: 1,
+  },
+  thumbImage: {
+    flex: 1,
+    borderRadius: 2,
+  },
+  thumbGradient: {
+    flex: 1,
+    borderRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbUI: {
+    width: '60%',
+    gap: 6,
+    alignItems: 'flex-start',
+  },
+  thumbLine: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    width: '70%',
+  },
+  thumbCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginTop: 4,
+  },
+});

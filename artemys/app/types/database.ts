@@ -65,6 +65,10 @@ export interface Comment {
 // Composite types (joined queries used by the UI)
 // ============================================================
 
+export interface CommentWithProfile extends Comment {
+  profiles: Profile;
+}
+
 export interface CollaboratorWithProfile extends Collaborator {
   profiles: Profile;
 }

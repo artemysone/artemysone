@@ -8,43 +8,38 @@ import {
   RefreshControl,
   ActivityIndicator,
   useWindowDimensions,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProfile } from '@/services/profiles';
 import { getUserProjects } from '@/services/projects';
+import { toggleFollow, getFollowStatus } from '@/services/feed';
 import { Avatar } from '@/components/Avatar';
-import { AppBar } from '@/components/AppBar';
 import { ProjectThumb, THUMB_GAP, thumbStyles } from '@/components/ProjectThumb';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { formatCount } from '@/utils/format';
 import type { ProfileWithStats, Project } from '@/types/database';
 
-function EmptyProjects() {
-  const router = useRouter();
+function EmptyProjects({ name }: { name: string }) {
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIcon}>
         <Ionicons name="cube-outline" size={40} color={colors.text.tertiary} />
       </View>
-      <Text style={styles.emptyTitle}>Share your first project</Text>
+      <Text style={styles.emptyTitle}>No projects yet</Text>
       <Text style={styles.emptySubtitle}>
-        Show what you've been building — add a project to get started.
+        {name} hasn't shared any projects yet. Check back later!
       </Text>
-      <Pressable style={styles.emptyButton} onPress={() => router.push('/create')}>
-        <Ionicons name="add" size={18} color="#fff" />
-        <Text style={styles.emptyButtonText}>New Project</Text>
-      </Pressable>
     </View>
   );
 }
 
-export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+export default function UserProfileScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const thumbSize = (screenWidth - THUMB_GAP * 4) / 3;
@@ -53,20 +48,30 @@ export default function ProfileScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  // If viewing own profile, redirect to tabs profile
+  useEffect(() => {
+    if (user && id === user.id) {
+      router.replace('/(tabs)/profile');
+    }
+  }, [user, id, router]);
 
   const fetchData = useCallback(async () => {
-    if (!user) return;
+    if (!id || id === user?.id) return;
     try {
-      const [prof, projs] = await Promise.all([
-        getProfile(user.id),
-        getUserProjects(user.id),
+      const [prof, projs, followStatus] = await Promise.all([
+        getProfile(id),
+        getUserProjects(id),
+        user ? getFollowStatus(user.id, id) : Promise.resolve(false),
       ]);
       setProfileData(prof);
       setProjects(projs);
+      setIsFollowing(followStatus);
     } catch (err) {
-      console.error('Failed to load profile:', err);
+      console.error('Failed to load user profile:', err);
     }
-  }, [user]);
+  }, [id, user]);
 
   useEffect(() => {
     let mounted = true;
@@ -83,16 +88,22 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, [fetchData]);
 
-  const handleSignOut = useCallback(() => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: () => signOut(),
-      },
-    ]);
-  }, [signOut]);
+  const handleFollow = useCallback(() => {
+    if (!user || !id) return;
+
+    setIsFollowing((prev) => !prev);
+
+    toggleFollow(user.id, id).catch(() => {
+      setIsFollowing((prev) => !prev);
+    });
+  }, [user, id]);
+
+  const handleProjectPress = useCallback(
+    (projectId: string) => {
+      router.push(`/project/${projectId}`);
+    },
+    [router],
+  );
 
   const name = profileData?.name ?? 'Builder';
   const handle = profileData?.handle ? `@${profileData.handle}` : '';
@@ -124,8 +135,13 @@ export default function ProfileScreen() {
         </View>
       </View>
       <View style={styles.profileActions}>
-        <Pressable style={styles.editBtn} onPress={() => router.push('/profile-edit' as any)}>
-          <Text style={styles.editBtnText}>Edit Profile</Text>
+        <Pressable
+          style={[styles.followBtn, isFollowing && styles.followBtnActive]}
+          onPress={handleFollow}
+        >
+          <Text style={[styles.followBtnText, isFollowing && styles.followBtnTextActive]}>
+            {isFollowing ? 'Following' : 'Follow'}
+          </Text>
         </Pressable>
         <Pressable style={styles.shareBtn}>
           <Ionicons name="share-outline" size={16} color={colors.text.primary} />
@@ -140,12 +156,18 @@ export default function ProfileScreen() {
         </View>
       )}
     </>
-  ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, router]);
+  ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, isFollowing, handleFollow]);
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+        <View style={styles.header}>
+          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
+          </Pressable>
+          <Text style={styles.headerTitle} numberOfLines={1}>Profile</Text>
+          <View style={styles.headerRight} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
@@ -155,14 +177,26 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+      <View style={styles.header}>
+        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
+        </Pressable>
+        <Text style={styles.headerTitle} numberOfLines={1}>{name}</Text>
+        <View style={styles.headerRight} />
+      </View>
       <FlatList
         data={projects}
         keyExtractor={(item) => item.id}
         numColumns={3}
-        renderItem={({ item }) => <ProjectThumb project={item} thumbSize={thumbSize} onPress={() => router.push(`/project/${item.id}` as any)} />}
+        renderItem={({ item }) => (
+          <ProjectThumb
+            project={item}
+            thumbSize={thumbSize}
+            onPress={() => handleProjectPress(item.id)}
+          />
+        )}
         ListHeaderComponent={listHeader}
-        ListEmptyComponent={EmptyProjects}
+        ListEmptyComponent={<EmptyProjects name={name} />}
         showsVerticalScrollIndicator={false}
         columnWrapperStyle={thumbStyles.gridRow}
         contentContainerStyle={styles.gridContainer}
@@ -183,11 +217,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  // Custom header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    fontFamily: fonts.display,
+    fontSize: 17,
+    color: colors.text.primary,
+    textAlign: 'center',
+    marginHorizontal: spacing.sm,
+  },
+  headerRight: {
+    width: 36,
+  },
+  // Loading
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Profile header
   profileHeader: {
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
@@ -234,23 +296,31 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 2,
   },
+  // Actions
   profileActions: {
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: spacing.lg,
   },
-  editBtn: {
+  followBtn: {
     flex: 1,
     padding: 9,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.accent,
     alignItems: 'center',
   },
-  editBtnText: {
+  followBtnActive: {
+    borderColor: 'transparent',
+    backgroundColor: colors.accentSoft,
+  },
+  followBtnText: {
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
-    color: colors.text.primary,
+    color: colors.accent,
+  },
+  followBtnTextActive: {
+    color: colors.accent,
   },
   shareBtn: {
     padding: 9,
@@ -261,6 +331,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Grid
   gridHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -310,20 +381,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 21,
     maxWidth: 260,
-  },
-  emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: spacing.lg,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-  },
-  emptyButtonText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    color: '#fff',
   },
 });

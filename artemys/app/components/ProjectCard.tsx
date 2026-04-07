@@ -7,7 +7,7 @@ import { TagChip } from './TagChip';
 import { CollaboratorStack } from './CollaboratorStack';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
-import { formatCount } from '@/utils/format';
+import { formatCount, timeSince } from '@/utils/format';
 import type { ProjectWithDetails } from '@/types/database';
 
 interface ProjectCardProps {
@@ -16,20 +16,10 @@ interface ProjectCardProps {
   onLike?: () => void;
   onFollow?: () => void;
   onPress?: () => void;
+  onAuthorPress?: () => void;
 }
 
-function timeSince(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (seconds < 60) return 'now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
-
-export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onLike, onFollow, onPress }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onLike, onFollow, onPress, onAuthorPress }: ProjectCardProps) {
   const { profiles: author } = project;
   const tags = project.project_tags?.map((pt) => pt.tags) ?? [];
   const collabs = project.collaborators?.map((c) => ({
@@ -41,11 +31,13 @@ export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onL
     <Pressable style={styles.card} onPress={onPress}>
       {/* Header */}
       <View style={styles.header}>
-        <Avatar uri={author.avatar_url} name={author.name} size="md" />
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{author.name}</Text>
-          <Text style={styles.meta}>@{author.handle} · {timeSince(project.created_at)}</Text>
-        </View>
+        <Pressable style={styles.authorTap} onPress={onAuthorPress}>
+          <Avatar uri={author.avatar_url} name={author.name} size="md" />
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{author.name}</Text>
+            <Text style={styles.meta}>@{author.handle} · {timeSince(project.created_at)}</Text>
+          </View>
+        </Pressable>
         <Pressable style={[styles.followBtn, isFollowing && styles.followBtnActive]} onPress={onFollow}>
           <Text style={[styles.followBtnText, isFollowing && styles.followBtnTextActive]}>
             {isFollowing ? 'Following' : 'Follow'}
@@ -117,6 +109,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
+    gap: 10,
+  },
+  authorTap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
     gap: 10,
   },
   userInfo: {

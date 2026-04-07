@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFeed, getDiscoverFeed, toggleLike, toggleFollow } from '@/services/feed';
 import { AppBar } from '@/components/AppBar';
@@ -18,6 +19,7 @@ import type { FeedItem } from '@/types/database';
 
 export default function FeedScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const [items, setItems] = useState<FeedItem[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -159,9 +161,11 @@ export default function FeedScreen() {
         isFollowing={item.user_is_following}
         onLike={() => handleLike(item.id)}
         onFollow={() => handleFollow(item.profiles.id)}
+        onPress={() => router.push(`/project/${item.id}` as any)}
+        onAuthorPress={() => router.push(`/user/${item.profiles.id}` as any)}
       />
     ),
-    [handleLike, handleFollow],
+    [handleLike, handleFollow, router],
   );
 
   const keyExtractor = useCallback((item: FeedItem) => item.id, []);

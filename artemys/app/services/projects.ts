@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase';
 import type { Project, ProjectWithDetails, CreateProjectInput } from '@/types/database';
 
 export async function createProject(userId: string, input: CreateProjectInput): Promise<Project> {
-  // Insert the project
   const { data: project, error } = await supabase
     .from('projects')
     .insert({
@@ -17,7 +16,6 @@ export async function createProject(userId: string, input: CreateProjectInput): 
     .single();
   if (error) throw error;
 
-  // Insert tags
   if (input.tag_ids.length > 0) {
     const { error: tagError } = await supabase.from('project_tags').insert(
       input.tag_ids.map((tag_id) => ({ project_id: project.id, tag_id }))
@@ -25,7 +23,6 @@ export async function createProject(userId: string, input: CreateProjectInput): 
     if (tagError) throw tagError;
   }
 
-  // Insert collaborators
   if (input.collaborators.length > 0) {
     const { error: collabError } = await supabase.from('collaborators').insert(
       input.collaborators.map((c) => ({
@@ -99,7 +96,6 @@ export async function uploadProjectMedia(
 
   const { data: { publicUrl } } = supabase.storage.from('project-media').getPublicUrl(path);
 
-  // Update project with media URL
   await supabase
     .from('projects')
     .update({ media_url: publicUrl, media_type: mediaType })

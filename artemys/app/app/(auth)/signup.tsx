@@ -309,11 +309,7 @@ export default function SignupScreen() {
                 {/* Avatar picker */}
                 <View style={styles.avatarSection}>
                   <Pressable onPress={pickAvatar} style={styles.avatarPicker}>
-                    {avatarUri ? (
-                      <Avatar uri={avatarUri} name={name || 'U'} size="lg" />
-                    ) : (
-                      <Avatar uri={null} name={name || 'U'} size="lg" />
-                    )}
+                    <Avatar uri={avatarUri} name={name || 'U'} size="lg" />
                     <View style={styles.avatarBadge}>
                       <Ionicons name="camera" size={14} color="#fff" />
                     </View>

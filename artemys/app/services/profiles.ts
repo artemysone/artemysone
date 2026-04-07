@@ -10,7 +10,6 @@ export async function getProfile(userId: string): Promise<ProfileWithStats | nul
 
   if (error || !data) return null;
 
-  // Fetch counts in parallel
   const [projects, followers, following] = await Promise.all([
     supabase.from('projects').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
@@ -59,16 +58,19 @@ export async function uploadAvatar(userId: string, uri: string): Promise<string>
 
   const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
 
-  // Update profile with new avatar URL
   await updateProfile(userId, { avatar_url: publicUrl });
   return publicUrl;
 }
 
 export async function searchProfiles(query: string, limit = 10): Promise<Profile[]> {
+  // Escape PostgREST special chars to prevent filter injection
+  const sanitized = query.replace(/[%_,.*()]/g, '');
+  if (!sanitized) return [];
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .or(`name.ilike.%${query}%,handle.ilike.%${query}%`)
+    .or(`name.ilike.%${sanitized}%,handle.ilike.%${sanitized}%`)
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as Profile[];

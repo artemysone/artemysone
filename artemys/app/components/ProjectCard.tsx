@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +7,7 @@ import { TagChip } from './TagChip';
 import { CollaboratorStack } from './CollaboratorStack';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import { formatCount } from '@/utils/format';
 import type { ProjectWithDetails } from '@/types/database';
 
 interface ProjectCardProps {
@@ -14,11 +16,6 @@ interface ProjectCardProps {
   onLike?: () => void;
   onFollow?: () => void;
   onPress?: () => void;
-}
-
-function formatCount(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return String(n);
 }
 
 function timeSince(dateStr: string): string {
@@ -32,7 +29,7 @@ function timeSince(dateStr: string): string {
   return `${days}d`;
 }
 
-export function ProjectCard({ project, isFollowing, onLike, onFollow, onPress }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onLike, onFollow, onPress }: ProjectCardProps) {
   const { profiles: author } = project;
   const tags = project.project_tags?.map((pt) => pt.tags) ?? [];
   const collabs = project.collaborators?.map((c) => ({
@@ -109,7 +106,7 @@ export function ProjectCard({ project, isFollowing, onLike, onFollow, onPress }:
       )}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

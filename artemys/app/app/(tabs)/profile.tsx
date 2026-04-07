@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Pressable,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
+  useWindowDimensions,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,11 +22,10 @@ import { Avatar } from '@/components/Avatar';
 import { AppBar } from '@/components/AppBar';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import { formatCount } from '@/utils/format';
 import type { ProfileWithStats, Project } from '@/types/database';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const THUMB_GAP = 2;
-const THUMB_SIZE = (SCREEN_WIDTH - THUMB_GAP * 4) / 3;
 
 // Deterministic gradient from project id
 const GRADIENTS: readonly [string, string][] = [
@@ -49,19 +48,13 @@ function getGradient(id: string): readonly [string, string] {
   return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
 }
 
-function formatCount(n: number): string {
-  if (n >= 10_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-  if (n >= 1_000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-  return String(n);
-}
-
-function ProjectThumb({ project }: { project: Project }) {
+function ProjectThumb({ project, thumbSize }: { project: Project; thumbSize: number }) {
   const hasThumbnail = project.thumbnail_url || project.media_url;
   const imageUri = project.thumbnail_url ?? project.media_url;
 
   if (hasThumbnail && imageUri) {
     return (
-      <Pressable style={styles.thumb}>
+      <Pressable style={[styles.thumb, { maxWidth: thumbSize }]}>
         <Image
           source={{ uri: imageUri }}
           style={styles.thumbImage}
@@ -74,7 +67,7 @@ function ProjectThumb({ project }: { project: Project }) {
 
   const grad = getGradient(project.id);
   return (
-    <Pressable style={styles.thumb}>
+    <Pressable style={[styles.thumb, { maxWidth: thumbSize }]}>
       <LinearGradient colors={grad as [string, string]} style={styles.thumbGradient}>
         <View style={styles.thumbUI}>
           <View style={styles.thumbLine} />
@@ -108,6 +101,8 @@ function EmptyProjects() {
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const thumbSize = (screenWidth - THUMB_GAP * 4) / 3;
 
   const [profileData, setProfileData] = useState<ProfileWithStats | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -172,16 +167,10 @@ export default function ProfileScreen() {
   const followerCount = profileData?.follower_count ?? 0;
   const followingCount = profileData?.following_count ?? 0;
 
-  const ListHeader = () => (
+  const listHeader = useMemo(() => (
     <>
-      {/* Profile header */}
       <View style={styles.profileHeader}>
-        <Avatar
-          uri={profileData?.avatar_url}
-          name={name}
-          size="lg"
-          showRing
-        />
+        <Avatar uri={profileData?.avatar_url} name={name} size="lg" showRing />
         <Text style={styles.profileName}>{name}</Text>
         {handle ? <Text style={styles.profileHandle}>{handle}</Text> : null}
         {bio ? <Text style={styles.profileBio}>{bio}</Text> : null}
@@ -200,21 +189,14 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
-
-      {/* Actions */}
       <View style={styles.profileActions}>
-        <Pressable
-          style={styles.editBtn}
-          onPress={() => router.push('/profile-edit' as any)}
-        >
+        <Pressable style={styles.editBtn} onPress={() => router.push('/profile-edit' as any)}>
           <Text style={styles.editBtnText}>Edit Profile</Text>
         </Pressable>
         <Pressable style={styles.shareBtn}>
           <Ionicons name="share-outline" size={16} color={colors.text.primary} />
         </Pressable>
       </View>
-
-      {/* Grid header */}
       {projects.length > 0 && (
         <View style={styles.gridHeader}>
           <Text style={styles.gridTitle}>Projects</Text>
@@ -224,45 +206,29 @@ export default function ProfileScreen() {
         </View>
       )}
     </>
-  );
+  ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, router]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
-      {projects.length === 0 ? (
-        <FlatList
-          data={[]}
-          renderItem={null}
-          ListHeaderComponent={ListHeader}
-          ListFooterComponent={EmptyProjects}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.accent}
-            />
-          }
-        />
-      ) : (
-        <FlatList
-          data={projects}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          renderItem={({ item }) => <ProjectThumb project={item} />}
-          ListHeaderComponent={ListHeader}
-          showsVerticalScrollIndicator={false}
-          columnWrapperStyle={styles.gridRow}
-          contentContainerStyle={styles.gridContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={colors.accent}
-            />
-          }
-        />
-      )}
+      <FlatList
+        data={projects}
+        keyExtractor={(item) => item.id}
+        numColumns={3}
+        renderItem={({ item }) => <ProjectThumb project={item} thumbSize={thumbSize} />}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={EmptyProjects}
+        showsVerticalScrollIndicator={false}
+        columnWrapperStyle={styles.gridRow}
+        contentContainerStyle={styles.gridContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+          />
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -377,7 +343,6 @@ const styles = StyleSheet.create({
   },
   thumb: {
     flex: 1,
-    maxWidth: THUMB_SIZE,
     aspectRatio: 1,
   },
   thumbImage: {

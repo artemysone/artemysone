@@ -27,21 +27,20 @@ export default function FeedScreen() {
   const [isDiscover, setIsDiscover] = useState(false);
 
   const loadFeed = useCallback(
-    async (pageNum: number, replace: boolean) => {
+    async (pageNum: number, replace: boolean, discoverMode?: boolean) => {
       if (!user) return;
+      const useDiscover = discoverMode ?? isDiscover;
       try {
         let data: FeedItem[];
 
-        if (pageNum === 0 && !isDiscover) {
-          // First page: try followed feed, fall back to discover
+        if (pageNum === 0 && !useDiscover) {
           data = await getFeed(user.id, 0);
           if (data.length === 0) {
             data = await getDiscoverFeed(user.id, 0);
             setIsDiscover(true);
           }
         } else {
-          // Subsequent pages or already in discover mode
-          const fetcher = isDiscover ? getDiscoverFeed : getFeed;
+          const fetcher = useDiscover ? getDiscoverFeed : getFeed;
           data = await fetcher(user.id, pageNum);
         }
 
@@ -70,7 +69,7 @@ export default function FeedScreen() {
     setPage(0);
     setHasMore(true);
     setIsDiscover(false);
-    await loadFeed(0, true);
+    await loadFeed(0, true, false);
     setRefreshing(false);
   }, [loadFeed]);
 

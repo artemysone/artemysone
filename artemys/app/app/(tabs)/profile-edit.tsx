@@ -28,7 +28,7 @@ export default function ProfileEditScreen() {
   const [handle, setHandle] = useState(profile?.handle ?? '');
   const [bio, setBio] = useState(profile?.bio ?? '');
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
-  const [newAvatarLocal, setNewAvatarLocal] = useState<string | null>(null);
+  const originalAvatarUrl = profile?.avatar_url ?? null;
 
   const [handleAvailable, setHandleAvailable] = useState<boolean | null>(null);
   const [checkingHandle, setCheckingHandle] = useState(false);
@@ -74,7 +74,6 @@ export default function ProfileEditScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setNewAvatarLocal(result.assets[0].uri);
       setAvatarUri(result.assets[0].uri);
     }
   }, []);
@@ -100,12 +99,10 @@ export default function ProfileEditScreen() {
 
     setSaving(true);
     try {
-      // Upload new avatar if changed
-      if (newAvatarLocal) {
-        await uploadAvatar(user.id, newAvatarLocal);
+      if (avatarUri !== originalAvatarUrl) {
+        await uploadAvatar(user.id, avatarUri!);
       }
 
-      // Update text fields
       await updateProfile(user.id, {
         name: trimmedName,
         handle: trimmedHandle,
@@ -119,7 +116,7 @@ export default function ProfileEditScreen() {
     } finally {
       setSaving(false);
     }
-  }, [user, name, handle, bio, handleAvailable, newAvatarLocal, refreshProfile, router]);
+  }, [user, name, handle, bio, handleAvailable, avatarUri, originalAvatarUrl, refreshProfile, router]);
 
   const displayName = name.trim() || profile?.name || 'Builder';
 

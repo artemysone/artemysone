@@ -11,10 +11,11 @@ create table public.profiles (
   name text not null,
   handle text not null unique,
   avatar_url text,
-  bio text default '',
+  bio text default '' not null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null,
 
+  constraint profile_name_not_blank check (char_length(btrim(name)) > 0),
   constraint handle_format check (handle ~ '^[a-z0-9_]{3,30}$')
 );
 
@@ -23,12 +24,14 @@ create table public.projects (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   title text not null,
-  description text default '',
+  description text default '' not null,
   media_url text,
-  media_type text default 'image' check (media_type in ('image', 'video')),
+  media_type text default 'image' not null check (media_type in ('image', 'video')),
   thumbnail_url text,
   created_at timestamptz default now() not null,
-  updated_at timestamptz default now() not null
+  updated_at timestamptz default now() not null,
+
+  constraint project_title_not_blank check (char_length(btrim(title)) > 0)
 );
 
 -- Tags (predefined, platform-managed)
@@ -48,7 +51,7 @@ create table public.project_tags (
 create table public.collaborators (
   project_id uuid references public.projects(id) on delete cascade not null,
   user_id uuid references public.profiles(id) on delete cascade not null,
-  role text default '',
+  role text default '' not null,
   created_at timestamptz default now() not null,
   primary key (project_id, user_id)
 );
@@ -77,7 +80,9 @@ create table public.comments (
   project_id uuid references public.projects(id) on delete cascade not null,
   user_id uuid references public.profiles(id) on delete cascade not null,
   text text not null,
-  created_at timestamptz default now() not null
+  created_at timestamptz default now() not null,
+
+  constraint comment_text_not_blank check (char_length(btrim(text)) > 0)
 );
 
 -- ============================================================
@@ -104,6 +109,33 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function public.normalize_profile_fields()
+returns trigger as $$
+begin
+  new.name = btrim(new.name);
+  new.handle = lower(btrim(new.handle));
+  new.bio = coalesce(btrim(new.bio), '');
+  return new;
+end;
+$$ language plpgsql;
+
+create or replace function public.normalize_project_fields()
+returns trigger as $$
+begin
+  new.title = btrim(new.title);
+  new.description = coalesce(btrim(new.description), '');
+  return new;
+end;
+$$ language plpgsql;
+
+create or replace function public.normalize_comment_fields()
+returns trigger as $$
+begin
+  new.text = btrim(new.text);
+  return new;
+end;
+$$ language plpgsql;
+
 create trigger on_profiles_updated
   before update on public.profiles
   for each row execute function public.handle_updated_at();
@@ -112,22 +144,147 @@ create trigger on_projects_updated
   before update on public.projects
   for each row execute function public.handle_updated_at();
 
+create trigger on_profiles_normalized
+  before insert or update on public.profiles
+  for each row execute function public.normalize_profile_fields();
+
+create trigger on_projects_normalized
+  before insert or update on public.projects
+  for each row execute function public.normalize_project_fields();
+
+create trigger on_comments_normalized
+  before insert or update on public.comments
+  for each row execute function public.normalize_comment_fields();
+
 -- ============================================================
 -- AUTO-CREATE PROFILE ON SIGNUP
 -- ============================================================
 
 create or replace function public.handle_new_user()
 returns trigger as $$
+declare
+  profile_handle text;
+  profile_name text;
+  profile_bio text;
 begin
-  insert into public.profiles (id, name, handle)
+  profile_handle := lower(
+    regexp_replace(
+      btrim(coalesce(new.raw_user_meta_data->>'handle', '')),
+      '[^a-z0-9_]',
+      '',
+      'g'
+    )
+  );
+  if profile_handle = '' or char_length(profile_handle) < 3 then
+    profile_handle := 'user_' || left(new.id::text, 8);
+  end if;
+  profile_handle := left(profile_handle, 30);
+
+  profile_name := nullif(btrim(coalesce(new.raw_user_meta_data->>'name', '')), '');
+  if profile_name is null then
+    profile_name := profile_handle;
+  end if;
+
+  profile_bio := coalesce(btrim(new.raw_user_meta_data->>'bio'), '');
+
+  insert into public.profiles (id, name, handle, bio)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'name', ''),
-    coalesce(new.raw_user_meta_data->>'handle', 'user_' || left(new.id::text, 8))
+    profile_name,
+    profile_handle,
+    profile_bio
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
+
+create or replace function public.search_profiles(
+  p_query text,
+  p_limit integer default 10
+)
+returns setof public.profiles
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select *
+  from public.profiles
+  where char_length(btrim(p_query)) >= 2
+    and (
+      name ilike '%' || btrim(p_query) || '%'
+      or handle ilike '%' || lower(btrim(p_query)) || '%'
+    )
+  order by
+    case when handle = lower(btrim(p_query)) then 0 else 1 end,
+    created_at desc
+  limit least(greatest(coalesce(p_limit, 10), 1), 50);
+$$;
+
+create or replace function public.create_project_with_relations(
+  p_title text,
+  p_description text default '',
+  p_media_url text default null,
+  p_media_type text default 'image',
+  p_thumbnail_url text default null,
+  p_tag_ids uuid[] default '{}',
+  p_collaborators jsonb default '[]'::jsonb
+)
+returns public.projects
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  created_project public.projects;
+  collaborator_item jsonb;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if jsonb_typeof(coalesce(p_collaborators, '[]'::jsonb)) <> 'array' then
+    raise exception 'Collaborators payload must be an array';
+  end if;
+
+  insert into public.projects (
+    user_id,
+    title,
+    description,
+    media_url,
+    media_type,
+    thumbnail_url
+  )
+  values (
+    auth.uid(),
+    p_title,
+    coalesce(p_description, ''),
+    p_media_url,
+    coalesce(p_media_type, 'image'),
+    p_thumbnail_url
+  )
+  returning * into created_project;
+
+  if coalesce(array_length(p_tag_ids, 1), 0) > 0 then
+    insert into public.project_tags (project_id, tag_id)
+    select created_project.id, tag_id
+    from unnest(p_tag_ids) as tag_id;
+  end if;
+
+  for collaborator_item in
+    select value from jsonb_array_elements(coalesce(p_collaborators, '[]'::jsonb))
+  loop
+    insert into public.collaborators (project_id, user_id, role)
+    values (
+      created_project.id,
+      (collaborator_item->>'user_id')::uuid,
+      coalesce(collaborator_item->>'role', '')
+    );
+  end loop;
+
+  return created_project;
+end;
+$$;
 
 create trigger on_auth_user_created
   after insert on auth.users

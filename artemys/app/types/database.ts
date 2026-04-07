@@ -73,10 +73,13 @@ export interface CollaboratorWithProfile extends Collaborator {
   profiles: Profile;
 }
 
-export interface ProjectWithDetails extends Project {
+export interface ProjectRelationsRow extends Project {
   profiles: Profile;
   project_tags: { tags: Tag }[];
   collaborators: CollaboratorWithProfile[];
+}
+
+export interface ProjectWithDetails extends ProjectRelationsRow {
   like_count: number;
   comment_count: number;
   user_has_liked: boolean;
@@ -103,7 +106,7 @@ export interface CreateProjectInput {
   media_type?: 'image' | 'video';
   thumbnail_url?: string;
   tag_ids: string[];
-  collaborators: { user_id: string; role: string }[];
+  collaborators: ProjectCollaboratorInput[];
 }
 
 export interface UpdateProfileInput {
@@ -111,4 +114,9 @@ export interface UpdateProfileInput {
   handle?: string;
   bio?: string;
   avatar_url?: string;
+}
+
+export interface ProjectCollaboratorInput {
+  user_id: string;
+  role: string;
 }

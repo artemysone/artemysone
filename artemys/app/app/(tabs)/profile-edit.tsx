@@ -19,6 +19,13 @@ import { updateProfile, uploadAvatar, checkHandleAvailable } from '@/services/pr
 import { Avatar } from '@/components/Avatar';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import {
+  MAX_HANDLE_LENGTH,
+  MIN_HANDLE_LENGTH,
+  HANDLE_RULE_MESSAGE,
+  isHandleValid,
+  normalizeHandle,
+} from '@/utils/validation';
 
 export default function ProfileEditScreen() {
   const { user, profile, refreshProfile } = useAuth();
@@ -35,14 +42,14 @@ export default function ProfileEditScreen() {
   const [saving, setSaving] = useState(false);
 
   const handleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const originalHandle = profile?.handle ?? '';
+  const originalHandle = normalizeHandle(profile?.handle ?? '');
 
   // Debounced handle availability check
   useEffect(() => {
     if (handleTimerRef.current) clearTimeout(handleTimerRef.current);
 
-    const trimmed = handle.trim().toLowerCase();
-    if (!trimmed || trimmed === originalHandle.toLowerCase()) {
+    const normalizedHandle = normalizeHandle(handle);
+    if (!normalizedHandle || normalizedHandle === originalHandle) {
       setHandleAvailable(null);
       setCheckingHandle(false);
       return;
@@ -51,7 +58,7 @@ export default function ProfileEditScreen() {
     setCheckingHandle(true);
     handleTimerRef.current = setTimeout(async () => {
       try {
-        const available = await checkHandleAvailable(trimmed);
+        const available = await checkHandleAvailable(normalizedHandle);
         setHandleAvailable(available);
       } catch {
         setHandleAvailable(null);
@@ -82,25 +89,34 @@ export default function ProfileEditScreen() {
     if (!user) return;
 
     const trimmedName = name.trim();
-    const trimmedHandle = handle.trim().toLowerCase();
+    const trimmedHandle = normalizeHandle(handle);
 
     if (!trimmedName) {
       Alert.alert('Name required', 'Please enter your name.');
       return;
     }
-    if (!trimmedHandle) {
-      Alert.alert('Handle required', 'Please enter a handle.');
+    if (trimmedHandle.length < MIN_HANDLE_LENGTH || !isHandleValid(trimmedHandle)) {
+      Alert.alert('Handle required', HANDLE_RULE_MESSAGE);
       return;
     }
-    if (handleAvailable === false) {
-      Alert.alert('Handle taken', 'That handle is already in use. Please choose another.');
+    if (checkingHandle) {
+      Alert.alert('Handle check in progress', 'Wait for the handle availability check to finish.');
       return;
+    }
+
+    if (trimmedHandle !== originalHandle) {
+      const available = handleAvailable ?? await checkHandleAvailable(trimmedHandle);
+      setHandleAvailable(available);
+      if (!available) {
+        Alert.alert('Handle taken', 'That handle is already in use. Please choose another.');
+        return;
+      }
     }
 
     setSaving(true);
     try {
-      if (avatarUri !== originalAvatarUrl) {
-        await uploadAvatar(user.id, avatarUri!);
+      if (avatarUri && avatarUri !== originalAvatarUrl) {
+        await uploadAvatar(user.id, avatarUri);
       }
 
       await updateProfile(user.id, {
@@ -111,8 +127,11 @@ export default function ProfileEditScreen() {
 
       await refreshProfile();
       router.back();
-    } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Failed to save profile. Please try again.');
+    } catch (err: unknown) {
+      Alert.alert(
+        'Error',
+        err instanceof Error ? err.message : 'Failed to save profile. Please try again.',
+      );
     } finally {
       setSaving(false);
     }
@@ -183,12 +202,13 @@ export default function ProfileEditScreen() {
                 <TextInput
                   style={[styles.input, styles.handleInput]}
                   value={handle}
-                  onChangeText={(text) => setHandle(text.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  onChangeText={(text) => setHandle(normalizeHandle(text))}
                   placeholder="handle"
                   placeholderTextColor={colors.text.tertiary}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="next"
+                  maxLength={MAX_HANDLE_LENGTH}
                 />
               </View>
               {checkingHandle && (

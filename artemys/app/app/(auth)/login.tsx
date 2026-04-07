@@ -33,8 +33,8 @@ export default function LoginScreen() {
     try {
       await signIn(email.trim(), password);
       // Session gating in root layout handles navigation
-    } catch (e: any) {
-      setError(e.message ?? 'Invalid email or password');
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Invalid email or password');
     } finally {
       setLoading(false);
     }

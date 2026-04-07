@@ -124,7 +124,7 @@ export default function ProfileScreen() {
         </View>
       </View>
       <View style={styles.profileActions}>
-        <Pressable style={styles.editBtn} onPress={() => router.push('/profile-edit' as any)}>
+        <Pressable style={styles.editBtn} onPress={() => router.push('/profile-edit')}>
           <Text style={styles.editBtnText}>Edit Profile</Text>
         </Pressable>
         <Pressable style={styles.shareBtn}>
@@ -160,7 +160,13 @@ export default function ProfileScreen() {
         data={projects}
         keyExtractor={(item) => item.id}
         numColumns={3}
-        renderItem={({ item }) => <ProjectThumb project={item} thumbSize={thumbSize} onPress={() => router.push(`/project/${item.id}` as any)} />}
+        renderItem={({ item }) => (
+          <ProjectThumb
+            project={item}
+            thumbSize={thumbSize}
+            onPress={() => router.push({ pathname: '/project/[id]', params: { id: item.id } })}
+          />
+        )}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={EmptyProjects}
         showsVerticalScrollIndicator={false}

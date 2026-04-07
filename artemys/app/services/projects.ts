@@ -1,38 +1,19 @@
 import { supabase } from '@/lib/supabase';
-import type { Project, ProjectWithDetails, CreateProjectInput } from '@/types/database';
+import type { CreateProjectInput, Project, ProjectRelationsRow, ProjectWithDetails } from '@/types/database';
+import { getFileExtension, getMediaContentType, readUriAsBlob } from '@/utils/media';
 
-export async function createProject(userId: string, input: CreateProjectInput): Promise<Project> {
-  const { data: project, error } = await supabase
-    .from('projects')
-    .insert({
-      user_id: userId,
-      title: input.title,
-      description: input.description,
-      media_url: input.media_url,
-      media_type: input.media_type ?? 'image',
-      thumbnail_url: input.thumbnail_url,
-    })
-    .select()
-    .single();
+export async function createProject(input: CreateProjectInput): Promise<Project> {
+  const { data: project, error } = await supabase.rpc('create_project_with_relations', {
+    p_title: input.title.trim(),
+    p_description: input.description.trim(),
+    p_media_url: input.media_url ?? null,
+    p_media_type: input.media_type ?? 'image',
+    p_thumbnail_url: input.thumbnail_url ?? null,
+    p_tag_ids: input.tag_ids,
+    p_collaborators: input.collaborators,
+  });
   if (error) throw error;
-
-  if (input.tag_ids.length > 0) {
-    const { error: tagError } = await supabase.from('project_tags').insert(
-      input.tag_ids.map((tag_id) => ({ project_id: project.id, tag_id }))
-    );
-    if (tagError) throw tagError;
-  }
-
-  if (input.collaborators.length > 0) {
-    const { error: collabError } = await supabase.from('collaborators').insert(
-      input.collaborators.map((c) => ({
-        project_id: project.id,
-        user_id: c.user_id,
-        role: c.role,
-      }))
-    );
-    if (collabError) throw collabError;
-  }
+  if (!project) throw new Error('Project creation returned no data.');
 
   return project as Project;
 }
@@ -59,7 +40,7 @@ export async function getProject(projectId: string, currentUserId?: string): Pro
   ]);
 
   return {
-    ...data,
+    ...(data as ProjectRelationsRow),
     like_count: likes.count ?? 0,
     comment_count: comments.count ?? 0,
     user_has_liked: !!userLike.data,
@@ -82,13 +63,11 @@ export async function uploadProjectMedia(
   uri: string,
   mediaType: 'image' | 'video'
 ): Promise<{ mediaUrl: string; thumbnailUrl?: string }> {
-  const ext = uri.split('.').pop() ?? (mediaType === 'video' ? 'mp4' : 'jpg');
+  const ext = getFileExtension(uri, mediaType === 'video' ? 'mp4' : 'jpg');
   const path = `${userId}/${projectId}/media.${ext}`;
 
-  const response = await fetch(uri);
-  const blob = await response.blob();
-
-  const contentType = mediaType === 'video' ? `video/${ext}` : `image/${ext}`;
+  const blob = await readUriAsBlob(uri, 'Failed to read the selected project media.');
+  const contentType = getMediaContentType(mediaType, ext);
   const { error } = await supabase.storage
     .from('project-media')
     .upload(path, blob, { upsert: true, contentType });
@@ -96,10 +75,14 @@ export async function uploadProjectMedia(
 
   const { data: { publicUrl } } = supabase.storage.from('project-media').getPublicUrl(path);
 
-  await supabase
+  const { error: updateError } = await supabase
     .from('projects')
     .update({ media_url: publicUrl, media_type: mediaType })
     .eq('id', projectId);
+  if (updateError) {
+    await supabase.storage.from('project-media').remove([path]);
+    throw updateError;
+  }
 
   return { mediaUrl: publicUrl };
 }

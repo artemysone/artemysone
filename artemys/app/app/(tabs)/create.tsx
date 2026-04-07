@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
-import { createProject, uploadProjectMedia } from '@/services/projects';
+import { createProject, deleteProject, uploadProjectMedia } from '@/services/projects';
 import { searchProfiles } from '@/services/profiles';
 import { getTags } from '@/services/tags';
 import { AppBar } from '@/components/AppBar';
@@ -70,6 +70,7 @@ export default function CreateScreen() {
     const trimmed = collabQuery.trim();
     if (trimmed.length < 2) {
       setSearchResults([]);
+      setSearching(false);
       return;
     }
 
@@ -162,9 +163,9 @@ export default function CreateScreen() {
     }
 
     setSubmitting(true);
+    let createdProjectId: string | null = null;
     try {
-      // 1. Create project record
-      const project = await createProject(user.id, {
+      const project = await createProject({
         title: title.trim(),
         description: description.trim(),
         tag_ids: selectedTagIds,
@@ -173,15 +174,24 @@ export default function CreateScreen() {
           role: c.role,
         })),
       });
+      createdProjectId = project.id;
 
-      // 2. Upload media
       await uploadProjectMedia(user.id, project.id, mediaUri, mediaType);
 
-      // 3. Done — reset and go to profile
       resetForm();
       router.navigate('/(tabs)/profile');
-    } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Something went wrong. Try again.');
+    } catch (err: unknown) {
+      if (createdProjectId) {
+        try {
+          await deleteProject(createdProjectId);
+        } catch (cleanupError) {
+          console.error('Failed to roll back incomplete project creation:', cleanupError);
+        }
+      }
+      Alert.alert(
+        'Error',
+        err instanceof Error ? err.message : 'Something went wrong. Try again.',
+      );
     } finally {
       setSubmitting(false);
     }

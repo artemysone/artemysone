@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { FeedItem } from '@/types/database';
+import type { FeedItem, ProjectRelationsRow } from '@/types/database';
 
 const PAGE_SIZE = 10;
 
@@ -11,7 +11,7 @@ const PROJECT_SELECT = `
 `;
 
 async function enrichProjects(
-  projects: any[],
+  projects: ProjectRelationsRow[],
   userId: string,
   followingStatus: (authorId: string) => boolean,
 ): Promise<FeedItem[]> {
@@ -24,6 +24,9 @@ async function enrichProjects(
     supabase.from('comments').select('project_id', { count: 'exact' }).in('project_id', projectIds),
     supabase.from('likes').select('project_id').eq('user_id', userId).in('project_id', projectIds),
   ]);
+  if (likeCounts.error) throw likeCounts.error;
+  if (commentCounts.error) throw commentCounts.error;
+  if (userLikes.error) throw userLikes.error;
 
   const likeMap = new Map<string, number>();
   const commentMap = new Map<string, number>();
@@ -52,10 +55,11 @@ async function enrichProjects(
 }
 
 export async function getFeed(userId: string, page = 0): Promise<FeedItem[]> {
-  const { data: followRows } = await supabase
+  const { data: followRows, error: followError } = await supabase
     .from('follows')
     .select('following_id')
     .eq('follower_id', userId);
+  if (followError) throw followError;
 
   const followingIds = (followRows ?? []).map((r) => r.following_id);
   if (followingIds.length === 0) return [];
@@ -91,56 +95,78 @@ export async function getDiscoverFeed(userId: string, page = 0): Promise<FeedIte
   if (!data) return [];
 
   const authorIds = [...new Set(data.map((p) => p.user_id))];
-  const { data: followRows } = await supabase
+  if (authorIds.length === 0) return enrichProjects(data as ProjectRelationsRow[], userId, () => false);
+
+  const { data: followRows, error: followError } = await supabase
     .from('follows')
     .select('following_id')
     .eq('follower_id', userId)
     .in('following_id', authorIds);
+  if (followError) throw followError;
   const followingSet = new Set((followRows ?? []).map((r) => r.following_id));
 
-  return enrichProjects(data, userId, (authorId) => followingSet.has(authorId));
+  return enrichProjects(data as ProjectRelationsRow[], userId, (authorId) => followingSet.has(authorId));
 }
 
 export async function toggleLike(userId: string, projectId: string): Promise<boolean> {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('likes')
     .select('user_id')
     .eq('user_id', userId)
     .eq('project_id', projectId)
     .maybeSingle();
+  if (existingError) throw existingError;
 
   if (existing) {
-    await supabase.from('likes').delete().eq('user_id', userId).eq('project_id', projectId);
+    const { error } = await supabase
+      .from('likes')
+      .delete()
+      .eq('user_id', userId)
+      .eq('project_id', projectId);
+    if (error) throw error;
     return false;
-  } else {
-    await supabase.from('likes').insert({ user_id: userId, project_id: projectId });
-    return true;
   }
+
+  const { error } = await supabase
+    .from('likes')
+    .insert({ user_id: userId, project_id: projectId });
+  if (error) throw error;
+  return true;
 }
 
 export async function toggleFollow(followerId: string, followingId: string): Promise<boolean> {
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('follows')
     .select('follower_id')
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
     .maybeSingle();
+  if (existingError) throw existingError;
 
   if (existing) {
-    await supabase.from('follows').delete().eq('follower_id', followerId).eq('following_id', followingId);
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .eq('follower_id', followerId)
+      .eq('following_id', followingId);
+    if (error) throw error;
     return false;
-  } else {
-    await supabase.from('follows').insert({ follower_id: followerId, following_id: followingId });
-    return true;
   }
+
+  const { error } = await supabase
+    .from('follows')
+    .insert({ follower_id: followerId, following_id: followingId });
+  if (error) throw error;
+  return true;
 }
 
 export async function getFollowStatus(followerId: string, followingId: string): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('follows')
     .select('follower_id')
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
     .maybeSingle();
+  if (error) throw error;
   return !!data;
 }

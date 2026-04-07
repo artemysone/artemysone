@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -19,8 +20,15 @@ import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { Avatar } from '@/components/Avatar';
 import { checkHandleAvailable, uploadAvatar } from '@/services/profiles';
+import {
+  MAX_HANDLE_LENGTH,
+  MIN_HANDLE_LENGTH,
+  HANDLE_RULE_MESSAGE,
+  hasMinimumHandleLength,
+  isHandleValid,
+  normalizeHandle,
+} from '@/utils/validation';
 
-const HANDLE_REGEX = /^[a-z0-9_]+$/;
 const DEBOUNCE_MS = 500;
 
 export default function SignupScreen() {
@@ -54,12 +62,7 @@ export default function SignupScreen() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setHandleAvailable(null);
 
-    if (!value || value.length < 2) {
-      setCheckingHandle(false);
-      return;
-    }
-
-    if (!HANDLE_REGEX.test(value)) {
+    if (!value || !hasMinimumHandleLength(value)) {
       setCheckingHandle(false);
       return;
     }
@@ -85,7 +88,7 @@ export default function SignupScreen() {
   }, []);
 
   const onHandleChange = (text: string) => {
-    const cleaned = text.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const cleaned = normalizeHandle(text);
     setHandle(cleaned);
     checkHandle(cleaned);
   };
@@ -112,16 +115,24 @@ export default function SignupScreen() {
   const handleCreateAccount = async () => {
     setError('');
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    const trimmedHandle = normalizeHandle(handle);
+    const trimmedBio = bio.trim();
+
+    if (!trimmedName) {
       setError('Name is required.');
       return;
     }
-    if (!handle || handle.length < 2) {
-      setError('Handle must be at least 2 characters.');
+    if (!hasMinimumHandleLength(trimmedHandle)) {
+      setError(`Handle must be at least ${MIN_HANDLE_LENGTH} characters.`);
       return;
     }
-    if (!HANDLE_REGEX.test(handle)) {
-      setError('Handle can only contain lowercase letters, numbers, and underscores.');
+    if (!isHandleValid(trimmedHandle)) {
+      setError(HANDLE_RULE_MESSAGE);
+      return;
+    }
+    if (checkingHandle) {
+      setError('Wait for the handle availability check to finish.');
       return;
     }
     if (handleAvailable === false) {
@@ -131,26 +142,41 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      await signUp(email.trim(), password, { name: name.trim(), handle });
+      const available = handleAvailable ?? await checkHandleAvailable(trimmedHandle);
+      setHandleAvailable(available);
+      if (!available) {
+        setError('That handle is already taken.');
+        return;
+      }
 
-      // If avatar was selected, upload it after signup.
-      // We need to wait briefly for the auth state to propagate so we have a user.
-      if (avatarUri) {
-        // The signUp triggers onAuthStateChange which sets the user.
-        // We'll use supabase.auth.getUser() to get the user ID.
-        const { supabase } = await import('@/lib/supabase');
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          try {
-            await uploadAvatar(user.id, avatarUri);
-          } catch {
-            // Avatar upload failed but account was created — not blocking
-          }
+      const authResult = await signUp(email.trim(), password, {
+        name: trimmedName,
+        handle: trimmedHandle,
+        bio: trimmedBio,
+      });
+
+      if (avatarUri && authResult.user && authResult.session) {
+        try {
+          await uploadAvatar(authResult.user.id, avatarUri);
+        } catch {
+          Alert.alert(
+            'Profile photo skipped',
+            'Your account was created, but the photo upload failed. You can add it later from Edit Profile.',
+          );
         }
       }
-      // Session gating in root layout handles navigation
-    } catch (e: any) {
-      setError(e.message ?? 'Something went wrong. Please try again.');
+
+      if (!authResult.session) {
+        Alert.alert(
+          'Check your email',
+          avatarUri
+            ? 'Confirm your email, then sign in to finish setup and add your profile photo.'
+            : 'Confirm your email, then sign in to finish setup.',
+        );
+        router.replace('/login');
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -171,18 +197,7 @@ export default function SignupScreen() {
 
   // Handle availability indicator
   const renderHandleStatus = () => {
-    if (!handle || handle.length < 2) return null;
-
-    if (!HANDLE_REGEX.test(handle)) {
-      return (
-        <View style={styles.handleStatus}>
-          <Ionicons name="close-circle" size={18} color="#D44" />
-          <Text style={[styles.handleStatusText, { color: '#D44' }]}>
-            Letters, numbers, and underscores only
-          </Text>
-        </View>
-      );
-    }
+    if (!handle || !hasMinimumHandleLength(handle)) return null;
 
     if (checkingHandle) {
       return (
@@ -345,6 +360,7 @@ export default function SignupScreen() {
                       autoCorrect={false}
                       textContentType="username"
                       autoComplete="username"
+                      maxLength={MAX_HANDLE_LENGTH}
                     />
                   </View>
                   {renderHandleStatus()}

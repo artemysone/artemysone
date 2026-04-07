@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import type { Profile, ProfileWithStats, UpdateProfileInput } from '@/types/database';
+import { isHandleValid, normalizeHandle } from '@/utils/validation';
+import { getFileExtension, readUriAsBlob } from '@/utils/media';
+
+const MAX_SEARCH_RESULTS = 50;
 
 export async function getProfile(userId: string): Promise<ProfileWithStats | null> {
   const { data, error } = await supabase
@@ -25,18 +29,29 @@ export async function getProfile(userId: string): Promise<ProfileWithStats | nul
 }
 
 export async function getProfileByHandle(handle: string): Promise<Profile | null> {
-  const { data } = await supabase
+  const normalizedHandle = normalizeHandle(handle);
+  const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('handle', handle.toLowerCase())
-    .single();
+    .eq('handle', normalizedHandle)
+    .maybeSingle();
+  if (error) throw error;
   return data as Profile | null;
 }
 
 export async function updateProfile(userId: string, updates: UpdateProfileInput) {
+  const normalizedUpdates: UpdateProfileInput = {
+    ...updates,
+    ...(typeof updates.name === 'string' ? { name: updates.name.trim() } : {}),
+    ...(typeof updates.bio === 'string' ? { bio: updates.bio.trim() } : {}),
+    ...(typeof updates.handle === 'string'
+      ? { handle: normalizeHandle(updates.handle) }
+      : {}),
+  };
+
   const { data, error } = await supabase
     .from('profiles')
-    .update(updates)
+    .update(normalizedUpdates)
     .eq('id', userId)
     .select()
     .single();
@@ -45,12 +60,10 @@ export async function updateProfile(userId: string, updates: UpdateProfileInput)
 }
 
 export async function uploadAvatar(userId: string, uri: string): Promise<string> {
-  const ext = uri.split('.').pop() ?? 'jpg';
+  const ext = getFileExtension(uri, 'jpg');
   const path = `${userId}/avatar.${ext}`;
 
-  const response = await fetch(uri);
-  const blob = await response.blob();
-
+  const blob = await readUriAsBlob(uri, 'Failed to read the selected avatar.');
   const { error } = await supabase.storage
     .from('avatars')
     .upload(path, blob, { upsert: true, contentType: `image/${ext}` });
@@ -63,23 +76,26 @@ export async function uploadAvatar(userId: string, uri: string): Promise<string>
 }
 
 export async function searchProfiles(query: string, limit = 10): Promise<Profile[]> {
-  // Escape PostgREST special chars to prevent filter injection
-  const sanitized = query.replace(/[%_,.*()]/g, '');
-  if (!sanitized) return [];
+  const trimmedQuery = query.trim();
+  if (trimmedQuery.length < 2) return [];
 
   const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .or(`name.ilike.%${sanitized}%,handle.ilike.%${sanitized}%`)
-    .limit(limit);
+    .rpc('search_profiles', {
+      p_query: trimmedQuery,
+      p_limit: Math.min(Math.max(limit, 1), MAX_SEARCH_RESULTS),
+    });
   if (error) throw error;
   return (data ?? []) as Profile[];
 }
 
 export async function checkHandleAvailable(handle: string): Promise<boolean> {
-  const { count } = await supabase
+  const normalizedHandle = normalizeHandle(handle);
+  if (!isHandleValid(normalizedHandle)) return false;
+
+  const { count, error } = await supabase
     .from('profiles')
     .select('id', { count: 'exact', head: true })
-    .eq('handle', handle.toLowerCase());
+    .eq('handle', normalizedHandle);
+  if (error) throw error;
   return count === 0;
 }

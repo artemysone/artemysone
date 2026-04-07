@@ -161,8 +161,8 @@ export default function FeedScreen() {
         isFollowing={item.user_is_following}
         onLike={() => handleLike(item.id)}
         onFollow={() => handleFollow(item.profiles.id)}
-        onPress={() => router.push(`/project/${item.id}` as any)}
-        onAuthorPress={() => router.push(`/user/${item.profiles.id}` as any)}
+        onPress={() => router.push({ pathname: '/project/[id]', params: { id: item.id } })}
+        onAuthorPress={() => router.push({ pathname: '/user/[id]', params: { id: item.profiles.id } })}
       />
     ),
     [handleLike, handleFollow, router],

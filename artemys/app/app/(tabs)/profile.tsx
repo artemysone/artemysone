@@ -54,9 +54,11 @@ export default function ProfileScreen() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
+    setError(false);
     try {
       const [prof, projs] = await Promise.all([
         getProfile(user.id),
@@ -66,6 +68,7 @@ export default function ProfileScreen() {
       setProjects(projs);
     } catch (err) {
       console.error('Failed to load profile:', err);
+      setError(true);
     }
   }, [user]);
 
@@ -80,6 +83,7 @@ export default function ProfileScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setError(false);
     await fetchData();
     setRefreshing(false);
   }, [fetchData]);
@@ -158,6 +162,22 @@ export default function ProfileScreen() {
         <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.tertiary} />
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorBody}>Check your connection and try again.</Text>
+          <Pressable style={styles.retryBtn} onPress={fetchData}>
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -341,5 +361,38 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
     color: '#fff',
+  },
+  // Error state
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+  errorTitle: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text.primary,
+    marginTop: spacing.sm,
+  },
+  errorBody: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  retryText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.accent,
   },
 });

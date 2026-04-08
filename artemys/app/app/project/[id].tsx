@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -141,6 +142,16 @@ export default function ProjectDetailScreen() {
     [],
   );
 
+  const handleShare = useCallback(async () => {
+    if (!project) return;
+    try {
+      await Share.share({
+        title: project.title,
+        message: `Check out "${project.title}" on Artemys`,
+      });
+    } catch {}
+  }, [project]);
+
   // ---------- Derived ----------
 
   const tags = project?.project_tags?.map((pt) => pt.tags) ?? [];
@@ -233,7 +244,7 @@ export default function ProjectDetailScreen() {
               <Ionicons name="chatbubble-outline" size={20} color={colors.text.primary} />
               <Text style={styles.actionText}>{formatCount(project.comment_count)}</Text>
             </Pressable>
-            <Pressable style={styles.actionBtn}>
+            <Pressable style={styles.actionBtn} onPress={handleShare}>
               <Ionicons name="share-outline" size={22} color={colors.text.primary} />
             </Pressable>
           </View>

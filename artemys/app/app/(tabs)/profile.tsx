@@ -22,7 +22,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { ProfileHeader } from '@/components/ProfileHeader';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
-import { shareProfile } from '@/utils/share';
+import { shareProfileWithLink } from '@/utils/share';
 import type { ProfileWithStats, Project } from '@/types/database';
 
 function EmptyProjects() {
@@ -106,7 +106,7 @@ export default function ProfileScreen() {
   }, [signOut]);
 
   const handleShareProfile = useCallback(() => {
-    if (profileData) shareProfile(profileData.name, profileData.handle);
+    if (profileData) shareProfileWithLink(profileData.name, profileData.handle, profileData.id);
   }, [profileData]);
 
   const name = profileData?.name ?? 'Builder';

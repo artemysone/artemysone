@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { createProject, deleteProject, uploadProjectMedia } from '@/services/projects';
 import { addProjectMedia } from '@/services/projectMedia';
+import { createCollaboratorNotification } from '@/services/notifications';
 import { searchProfiles } from '@/services/profiles';
 import { getTags } from '@/services/tags';
 import { AppBar } from '@/components/AppBar';
@@ -28,6 +29,7 @@ import { Avatar } from '@/components/Avatar';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import type { Tag, Profile } from '@/types/database';
+import { isValidExternalUrl, normalizeExternalUrl } from '@/utils/validation';
 
 interface MediaItem {
   uri: string;
@@ -190,14 +192,26 @@ export default function CreateScreen() {
       return;
     }
 
+    const normalizedDemoUrl = normalizeExternalUrl(demoUrl);
+    if (normalizedDemoUrl && !isValidExternalUrl(normalizedDemoUrl)) {
+      Alert.alert('Invalid demo URL', 'Use a full http or https URL for the demo link.');
+      return;
+    }
+
+    const normalizedRepoUrl = normalizeExternalUrl(repoUrl);
+    if (normalizedRepoUrl && !isValidExternalUrl(normalizedRepoUrl)) {
+      Alert.alert('Invalid repository URL', 'Use a full http or https URL for the repository link.');
+      return;
+    }
+
     setSubmitting(true);
     let createdProjectId: string | null = null;
     try {
       const project = await createProject({
         title: title.trim(),
         description: description.trim(),
-        demo_url: demoUrl.trim() || undefined,
-        repo_url: repoUrl.trim() || undefined,
+        demo_url: normalizedDemoUrl || undefined,
+        repo_url: normalizedRepoUrl || undefined,
         tag_ids: selectedTagIds,
         collaborators: collaborators.map((c) => ({
           user_id: c.user_id,
@@ -213,13 +227,17 @@ export default function CreateScreen() {
         project.id,
         primary.uri,
         primary.type,
+        { storageKey: 'primary', updateProject: true },
       );
 
       // If there are additional media items, upload them in parallel to project_media
       if (mediaItems.length > 1) {
         const uploadResults = await Promise.all(
           mediaItems.slice(1).map((item, i) =>
-            uploadProjectMedia(user.id, project.id, item.uri, item.type).then((r) => ({
+            uploadProjectMedia(user.id, project.id, item.uri, item.type, {
+              storageKey: `media-${i + 1}`,
+              updateProject: false,
+            }).then((r) => ({
               mediaUrl: r.mediaUrl,
               mediaType: item.type as 'image' | 'video',
               thumbnailUrl: r.thumbnailUrl,
@@ -232,6 +250,14 @@ export default function CreateScreen() {
           { mediaUrl, mediaType: primary.type, thumbnailUrl, sortOrder: 0 },
           ...uploadResults,
         ]);
+      }
+
+      if (collaborators.length > 0) {
+        await Promise.allSettled(
+          collaborators.map((collaborator) =>
+            createCollaboratorNotification(project.id, collaborator.user_id),
+          ),
+        );
       }
 
       resetForm();

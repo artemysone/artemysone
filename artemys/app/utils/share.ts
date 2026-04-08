@@ -5,9 +5,9 @@ function shareMessage(message: string, title?: string) {
   return Share.share(title ? { title, message } : { message });
 }
 
-export async function shareProfile(name: string, handle: string) {
+export async function shareProfileWithLink(name: string, handle: string, profileId: string) {
   try {
-    await shareMessage(`Check out ${name} (@${handle}) on Artemys\n${profileUrl(handle)}`);
+    await shareMessage(`Check out ${name} (@${handle}) on Artemys\n${profileUrl(profileId)}`);
   } catch {}
 }
 

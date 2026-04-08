@@ -105,6 +105,7 @@ export interface ProjectRelationsRow extends Project {
   profiles: Profile;
   project_tags: { tags: Tag }[];
   collaborators: CollaboratorWithProfile[];
+  project_media?: Pick<ProjectMedia, 'id'>[];
 }
 
 export interface ProjectWithDetails extends ProjectRelationsRow {

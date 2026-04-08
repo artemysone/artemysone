@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { createNotification } from './notifications';
+import { createCommentNotification } from './notifications';
 import type { CommentWithProfile } from '@/types/database';
 
 export async function getComments(projectId: string): Promise<CommentWithProfile[]> {
@@ -16,7 +16,6 @@ export async function addComment(
   userId: string,
   projectId: string,
   text: string,
-  projectOwnerId?: string,
 ): Promise<CommentWithProfile> {
   const { data, error } = await supabase
     .from('comments')
@@ -25,9 +24,7 @@ export async function addComment(
     .single();
   if (error) throw error;
   const comment = data as CommentWithProfile;
-  if (projectOwnerId) {
-    createNotification({ userId: projectOwnerId, actorId: userId, type: 'comment', projectId, commentId: comment.id }).catch(() => {});
-  }
+  createCommentNotification(comment.id).catch(() => {});
   return comment;
 }
 

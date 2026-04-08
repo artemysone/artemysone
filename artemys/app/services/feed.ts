@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { createNotification } from './notifications';
+import { createFollowNotification, createLikeNotification } from './notifications';
 import type { FeedItem, ProjectRelationsRow } from '@/types/database';
 
 const PAGE_SIZE = 10;
@@ -109,7 +109,7 @@ export async function getDiscoverFeed(userId: string, page = 0): Promise<FeedIte
   return enrichProjects(data as ProjectRelationsRow[], userId, (authorId) => followingSet.has(authorId));
 }
 
-export async function toggleLike(userId: string, projectId: string, projectOwnerId?: string): Promise<boolean> {
+export async function toggleLike(userId: string, projectId: string): Promise<boolean> {
   const { data: existing, error: existingError } = await supabase
     .from('likes')
     .select('user_id')
@@ -132,9 +132,7 @@ export async function toggleLike(userId: string, projectId: string, projectOwner
     .from('likes')
     .insert({ user_id: userId, project_id: projectId });
   if (error) throw error;
-  if (projectOwnerId) {
-    createNotification({ userId: projectOwnerId, actorId: userId, type: 'like', projectId }).catch(() => {});
-  }
+  createLikeNotification(projectId).catch(() => {});
   return true;
 }
 
@@ -161,7 +159,7 @@ export async function toggleFollow(followerId: string, followingId: string): Pro
     .from('follows')
     .insert({ follower_id: followerId, following_id: followingId });
   if (error) throw error;
-  createNotification({ userId: followingId, actorId: followerId, type: 'follow' }).catch(() => {});
+  createFollowNotification(followingId).catch(() => {});
   return true;
 }
 

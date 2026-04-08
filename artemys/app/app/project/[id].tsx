@@ -28,6 +28,7 @@ import { formatCount, timeSince } from '@/utils/format';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { shareProject } from '@/utils/share';
+import { isValidExternalUrl } from '@/utils/validation';
 import type { ProjectWithDetails, ProjectMedia, CommentWithProfile } from '@/types/database';
 
 export default function ProjectDetailScreen() {
@@ -156,6 +157,11 @@ export default function ProjectDetailScreen() {
     await shareProject(project.title, project.profiles.handle, project.id);
   }, [project]);
 
+  const openExternalLink = useCallback(async (url: string) => {
+    if (!isValidExternalUrl(url)) return;
+    await WebBrowser.openBrowserAsync(url);
+  }, []);
+
   // ---------- Derived ----------
 
   const tags = project?.project_tags?.map((pt) => pt.tags) ?? [];
@@ -258,7 +264,7 @@ export default function ProjectDetailScreen() {
               {project.demo_url && (
                 <Pressable
                   style={styles.linkRow}
-                  onPress={() => WebBrowser.openBrowserAsync(project.demo_url!)}
+                  onPress={() => openExternalLink(project.demo_url!)}
                 >
                   <Ionicons name="globe-outline" size={18} color={colors.accent} />
                   <Text style={styles.linkText} numberOfLines={1}>Live Demo</Text>
@@ -267,7 +273,7 @@ export default function ProjectDetailScreen() {
               {project.repo_url && (
                 <Pressable
                   style={styles.linkRow}
-                  onPress={() => WebBrowser.openBrowserAsync(project.repo_url!)}
+                  onPress={() => openExternalLink(project.repo_url!)}
                 >
                   <Ionicons name="logo-github" size={18} color={colors.accent} />
                   <Text style={styles.linkText} numberOfLines={1}>Source Code</Text>

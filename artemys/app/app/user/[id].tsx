@@ -21,7 +21,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { ProfileHeader } from '@/components/ProfileHeader';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
-import { shareProfile } from '@/utils/share';
+import { shareProfileWithLink } from '@/utils/share';
 import type { ProfileWithStats, Project } from '@/types/database';
 
 function EmptyProjects({ name }: { name: string }) {
@@ -111,7 +111,7 @@ export default function UserProfileScreen() {
   );
 
   const handleShareProfile = useCallback(() => {
-    if (profileData) shareProfile(profileData.name, profileData.handle);
+    if (profileData) shareProfileWithLink(profileData.name, profileData.handle, profileData.id);
   }, [profileData]);
 
   const name = profileData?.name ?? 'Builder';

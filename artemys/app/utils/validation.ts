@@ -21,3 +21,19 @@ export function isHandleValid(handle: string): boolean {
 export function hasMinimumHandleLength(handle: string): boolean {
   return handle.length >= MIN_HANDLE_LENGTH;
 }
+
+export function normalizeExternalUrl(value: string): string {
+  return value.trim();
+}
+
+export function isValidExternalUrl(value: string): boolean {
+  const trimmed = normalizeExternalUrl(value);
+  if (!trimmed) return false;
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

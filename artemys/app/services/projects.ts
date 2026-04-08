@@ -3,6 +3,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { supabase } from '@/lib/supabase';
 import type { CreateProjectInput, Project, ProjectRelationsRow, ProjectWithDetails } from '@/types/database';
 import { getFileExtension, getMediaContentType, readUriAsBlob, extractVideoThumbnailWeb } from '@/utils/media';
+import { normalizeExternalUrl } from '@/utils/validation';
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const { data: project, error } = await supabase.rpc('create_project_with_relations', {
@@ -11,26 +12,14 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     p_media_url: input.media_url ?? null,
     p_media_type: input.media_type ?? 'image',
     p_thumbnail_url: input.thumbnail_url ?? null,
+    p_demo_url: input.demo_url ? normalizeExternalUrl(input.demo_url) : null,
+    p_repo_url: input.repo_url ? normalizeExternalUrl(input.repo_url) : null,
     p_tag_ids: input.tag_ids,
     p_collaborators: input.collaborators,
   });
   if (error) throw error;
   if (!project) throw new Error('Project creation returned no data.');
-
-  // Set demo_url and repo_url if provided (RPC doesn't support these params)
-  const p = project as Project;
-  if (input.demo_url || input.repo_url) {
-    const updates: Partial<Pick<Project, 'demo_url' | 'repo_url'>> = {};
-    if (input.demo_url) updates.demo_url = input.demo_url;
-    if (input.repo_url) updates.repo_url = input.repo_url;
-    const { error: updateError } = await supabase
-      .from('projects')
-      .update(updates)
-      .eq('id', p.id);
-    if (updateError) throw updateError;
-  }
-
-  return p;
+  return project as Project;
 }
 
 export async function getProject(projectId: string, currentUserId?: string): Promise<ProjectWithDetails | null> {
@@ -40,8 +29,7 @@ export async function getProject(projectId: string, currentUserId?: string): Pro
       *,
       profiles!projects_user_id_fkey(*),
       project_tags(tags(*)),
-      collaborators(*, profiles(*)),
-      project_media(*)
+      collaborators(*, profiles(*))
     `)
     .eq('id', projectId)
     .maybeSingle();
@@ -81,11 +69,17 @@ export async function uploadProjectMedia(
   userId: string,
   projectId: string,
   uri: string,
-  mediaType: 'image' | 'video'
+  mediaType: 'image' | 'video',
+  options?: {
+    storageKey?: string;
+    updateProject?: boolean;
+  },
 ): Promise<{ mediaUrl: string; thumbnailUrl?: string }> {
+  const storageKey = options?.storageKey ?? 'primary';
+  const updateProject = options?.updateProject ?? true;
   const ext = getFileExtension(uri, mediaType === 'video' ? 'mp4' : 'jpg');
-  const path = `${userId}/${projectId}/media.${ext}`;
-  const thumbPath = `${userId}/${projectId}/thumb.jpg`;
+  const path = `${userId}/${projectId}/${storageKey}.${ext}`;
+  const thumbPath = `${userId}/${projectId}/${storageKey}-thumb.jpg`;
 
   const blob = await readUriAsBlob(uri, 'Failed to read the selected project media.');
   const contentType = getMediaContentType(mediaType, ext);
@@ -125,18 +119,20 @@ export async function uploadProjectMedia(
     }
   }
 
-  const { error: updateError } = await supabase
-    .from('projects')
-    .update({
-      media_url: publicUrl,
-      media_type: mediaType,
-      ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : {}),
-    })
-    .eq('id', projectId);
-  if (updateError) {
-    const pathsToRemove = thumbnailUrl ? [path, thumbPath] : [path];
-    await supabase.storage.from('project-media').remove(pathsToRemove);
-    throw updateError;
+  if (updateProject) {
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({
+        media_url: publicUrl,
+        media_type: mediaType,
+        thumbnail_url: thumbnailUrl ?? null,
+      })
+      .eq('id', projectId);
+    if (updateError) {
+      const pathsToRemove = thumbnailUrl ? [path, thumbPath] : [path];
+      await supabase.storage.from('project-media').remove(pathsToRemove);
+      throw updateError;
+    }
   }
 
   return { mediaUrl: publicUrl, thumbnailUrl };

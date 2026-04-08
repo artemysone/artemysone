@@ -21,6 +21,7 @@ import {
   SourceSerif4_700Bold,
 } from '@expo-google-fonts/source-serif-4';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { getProfileByHandle } from '@/services/profiles';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -50,21 +51,26 @@ function RootNavigator() {
   useEffect(() => {
     if (!url || loading || !session) return;
 
-    try {
-      const { path } = Linking.parse(url);
-      if (!path) return;
+    let active = true;
 
-      // /@handle → /user/[id] (look up by handle)
-      const handleMatch = path.match(/^@(.+)$/);
+    const { path } = Linking.parse(url);
+    if (path) {
+      const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+      const handleMatch = normalizedPath.match(/^@(.+)$/);
       if (handleMatch) {
-        router.push({ pathname: '/user/[id]', params: { id: handleMatch[1] } });
-        return;
+        getProfileByHandle(handleMatch[1])
+          .then((profile) => {
+            if (!active || !profile) return;
+            router.push({ pathname: '/user/[id]', params: { id: profile.id } });
+          })
+          .catch(() => {});
       }
+    }
 
-      // /project/:id → expo-router handles automatically
-      // /user/:id → expo-router handles automatically
-    } catch {}
-  }, [url, loading, session]);
+    return () => {
+      active = false;
+    };
+  }, [url, loading, router, session]);
 
   return (
     <>

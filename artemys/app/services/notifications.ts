@@ -49,21 +49,34 @@ export async function markAllAsRead(userId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function createNotification(params: {
-  userId: string;
-  actorId: string;
-  type: 'like' | 'follow' | 'comment' | 'collaborator';
-  projectId?: string;
-  commentId?: string;
-}): Promise<void> {
-  if (params.userId === params.actorId) return;
+export async function createLikeNotification(projectId: string): Promise<void> {
+  const { error } = await supabase.rpc('create_like_notification', {
+    p_project_id: projectId,
+  });
+  if (error) throw error;
+}
 
-  const { error } = await supabase.from('notifications').insert({
-    user_id: params.userId,
-    actor_id: params.actorId,
-    type: params.type,
-    project_id: params.projectId ?? null,
-    comment_id: params.commentId ?? null,
+export async function createFollowNotification(followingId: string): Promise<void> {
+  const { error } = await supabase.rpc('create_follow_notification', {
+    p_following_id: followingId,
+  });
+  if (error) throw error;
+}
+
+export async function createCommentNotification(commentId: string): Promise<void> {
+  const { error } = await supabase.rpc('create_comment_notification', {
+    p_comment_id: commentId,
+  });
+  if (error) throw error;
+}
+
+export async function createCollaboratorNotification(
+  projectId: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('create_collaborator_notification', {
+    p_project_id: projectId,
+    p_user_id: userId,
   });
   if (error) throw error;
 }

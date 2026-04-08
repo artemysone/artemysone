@@ -1,6 +1,6 @@
 # Hi, I'm Jeff 👋
 
-**Technical recruiter turned builder** — 8 months deep into building with Claude Code and shipping tools for the future of work.
+**Technical recruiter turned builder** — 8 months deep into building with Coding Agents (Claude Code, Codex, OpenClaw) and shipping tools for the future of work.
 
 ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/-Next.js-000000?style=flat-square&logo=next.js&logoColor=white)
@@ -27,7 +27,6 @@
 ## Connect
 
 [![X](https://img.shields.io/badge/-@recruitergpt-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/recruitergpt)
-[![LinkedIn](https://img.shields.io/badge/-Jeff_Blue-0077B5?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/jeffblue)
 [![GitHub](https://img.shields.io/badge/-Follow-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/jeffreyblue)
 
 ---

@@ -3,18 +3,17 @@ import {
   View,
   Text,
   FlatList,
-  Pressable,
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFeed, getDiscoverFeed, toggleLike, toggleFollow } from '@/services/feed';
 import { AppBar } from '@/components/AppBar';
 import { ProjectCard } from '@/components/ProjectCard';
+import { ErrorState } from '@/components/ErrorState';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import type { FeedItem } from '@/types/database';
@@ -207,14 +206,7 @@ export default function FeedScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <AppBar title="Feed" />
-        <View style={styles.errorContainer}>
-          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.tertiary} />
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorBody}>Check your connection and try again.</Text>
-          <Pressable style={styles.retryBtn} onPress={handleRetry}>
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
-        </View>
+        <ErrorState onRetry={handleRetry} />
       </SafeAreaView>
     );
   }
@@ -281,37 +273,5 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
-  },
-  errorTitle: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.text.primary,
-    marginTop: spacing.sm,
-  },
-  errorBody: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-  },
-  retryText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.accent,
   },
 });

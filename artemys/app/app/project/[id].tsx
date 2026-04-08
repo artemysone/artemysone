@@ -23,6 +23,7 @@ import { toggleLike, toggleFollow, getFollowStatus } from '@/services/feed';
 import { getComments, addComment, deleteComment } from '@/services/comments';
 import { Avatar } from '@/components/Avatar';
 import { TagChip } from '@/components/TagChip';
+import { ErrorState } from '@/components/ErrorState';
 import { formatCount, timeSince } from '@/utils/format';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
@@ -190,14 +191,7 @@ export default function ProjectDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         {header}
-        <View style={styles.errorContainer}>
-          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.tertiary} />
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorBody}>Check your connection and try again.</Text>
-          <Pressable style={styles.retryBtn} onPress={fetchProject}>
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
-        </View>
+        <ErrorState onRetry={fetchProject} />
       </SafeAreaView>
     );
   }
@@ -660,39 +654,5 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     backgroundColor: colors.text.tertiary,
-  },
-
-  // Error state
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
-  },
-  errorTitle: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.text.primary,
-    marginTop: spacing.sm,
-  },
-  errorBody: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-  },
-  retryText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.accent,
   },
 });

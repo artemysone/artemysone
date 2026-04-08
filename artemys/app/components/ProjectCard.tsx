@@ -57,7 +57,7 @@ export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onL
           {project.media_type === 'video' && (
             <View style={styles.playOverlay}>
               <View style={styles.playButton}>
-                <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 2 }} />
+                <Ionicons name="play" size={24} color="#fff" style={styles.playIcon} />
               </View>
             </View>
           )}
@@ -191,6 +191,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  playIcon: {
+    marginLeft: 2,
   },
   actions: {
     flexDirection: 'row',

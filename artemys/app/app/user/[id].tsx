@@ -8,7 +8,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   useWindowDimensions,
-  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,9 +18,11 @@ import { getUserProjects } from '@/services/projects';
 import { toggleFollow, getFollowStatus } from '@/services/feed';
 import { Avatar } from '@/components/Avatar';
 import { ProjectThumb, THUMB_GAP, thumbStyles } from '@/components/ProjectThumb';
+import { ErrorState } from '@/components/ErrorState';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { formatCount } from '@/utils/format';
+import { shareProfile } from '@/utils/share';
 import type { ProfileWithStats, Project } from '@/types/database';
 
 function EmptyProjects({ name }: { name: string }) {
@@ -110,13 +111,8 @@ export default function UserProfileScreen() {
     [router],
   );
 
-  const handleShareProfile = useCallback(async () => {
-    if (!profileData) return;
-    try {
-      await Share.share({
-        message: `Check out ${profileData.name} (@${profileData.handle}) on Artemys`,
-      });
-    } catch {}
+  const handleShareProfile = useCallback(() => {
+    if (profileData) shareProfile(profileData.name, profileData.handle);
   }, [profileData]);
 
   const name = profileData?.name ?? 'Builder';
@@ -199,14 +195,7 @@ export default function UserProfileScreen() {
           <Text style={styles.headerTitle} numberOfLines={1}>Profile</Text>
           <View style={styles.headerRight} />
         </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.tertiary} />
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorBody}>Check your connection and try again.</Text>
-          <Pressable style={styles.retryBtn} onPress={fetchData}>
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
-        </View>
+        <ErrorState onRetry={fetchData} />
       </SafeAreaView>
     );
   }
@@ -417,38 +406,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 21,
     maxWidth: 260,
-  },
-  // Error state
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
-  },
-  errorTitle: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.text.primary,
-    marginTop: spacing.sm,
-  },
-  errorBody: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.secondary,
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-  },
-  retryText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.accent,
   },
 });

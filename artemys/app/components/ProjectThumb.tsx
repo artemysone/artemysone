@@ -51,7 +51,7 @@ export function ProjectThumb({
           {project.media_type === 'video' && (
             <View style={styles.thumbPlayOverlay}>
               <View style={styles.thumbPlayButton}>
-                <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 1 }} />
+                <Ionicons name="play" size={12} color="#fff" style={styles.thumbPlayIcon} />
               </View>
             </View>
           )}
@@ -110,6 +110,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  thumbPlayIcon: {
+    marginLeft: 1,
   },
   thumbGradient: {
     flex: 1,

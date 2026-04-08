@@ -20,6 +20,8 @@ export interface Project {
   media_url: string | null;
   media_type: 'image' | 'video';
   thumbnail_url: string | null;
+  demo_url: string | null;
+  repo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,12 +63,38 @@ export interface Comment {
   created_at: string;
 }
 
+export interface Notification {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  type: 'like' | 'follow' | 'comment' | 'collaborator';
+  project_id: string | null;
+  comment_id: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+export interface ProjectMedia {
+  id: string;
+  project_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  thumbnail_url: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
 // ============================================================
 // Composite types (joined queries used by the UI)
 // ============================================================
 
 export interface CommentWithProfile extends Comment {
   profiles: Profile;
+}
+
+export interface NotificationWithActor extends Notification {
+  profiles: Profile;
+  projects: Pick<Project, 'id' | 'title' | 'thumbnail_url'> | null;
 }
 
 export interface CollaboratorWithProfile extends Collaborator {
@@ -105,6 +133,8 @@ export interface CreateProjectInput {
   media_url?: string;
   media_type?: 'image' | 'video';
   thumbnail_url?: string;
+  demo_url?: string;
+  repo_url?: string;
   tag_ids: string[];
   collaborators: ProjectCollaboratorInput[];
 }

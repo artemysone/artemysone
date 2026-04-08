@@ -17,7 +17,20 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   if (error) throw error;
   if (!project) throw new Error('Project creation returned no data.');
 
-  return project as Project;
+  // Set demo_url and repo_url if provided (RPC doesn't support these params)
+  const p = project as Project;
+  if (input.demo_url || input.repo_url) {
+    const updates: Partial<Pick<Project, 'demo_url' | 'repo_url'>> = {};
+    if (input.demo_url) updates.demo_url = input.demo_url;
+    if (input.repo_url) updates.repo_url = input.repo_url;
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update(updates)
+      .eq('id', p.id);
+    if (updateError) throw updateError;
+  }
+
+  return p;
 }
 
 export async function getProject(projectId: string, currentUserId?: string): Promise<ProjectWithDetails | null> {
@@ -27,7 +40,8 @@ export async function getProject(projectId: string, currentUserId?: string): Pro
       *,
       profiles!projects_user_id_fkey(*),
       project_tags(tags(*)),
-      collaborators(*, profiles(*))
+      collaborators(*, profiles(*)),
+      project_media(*)
     `)
     .eq('id', projectId)
     .maybeSingle();

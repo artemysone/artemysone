@@ -1,37 +1,21 @@
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/Colors';
+import { fonts } from '@/constants/Typography';
+import { getGradient } from '@/utils/gradients';
 import type { Project } from '@/types/database';
 
-const GRADIENTS: readonly [string, string][] = [
-  ['#F4845F', '#F7B267'],
-  ['#7B2FBE', '#4A90D9'],
-  ['#2D936C', '#47B5A0'],
-  ['#E07A5F', '#F2CC8F'],
-  ['#D84797', '#F09ABC'],
-  ['#3D5A80', '#98C1D9'],
-  ['#CB4B16', '#F5A623'],
-  ['#7C6AEF', '#C084FC'],
-  ['#0F766E', '#5EEAD4'],
-];
-
 type ProjectMediaPreviewProps = {
-  project: Pick<Project, 'id' | 'media_url' | 'media_type' | 'thumbnail_url'>;
+  project: Pick<Project, 'id' | 'media_url' | 'media_type' | 'thumbnail_url'> & {
+    project_media?: { id: string }[];
+  };
   fallback: 'icon' | 'gradient';
   aspectRatio: number;
   playButtonSize: number;
   borderRadius?: number;
 };
-
-function getGradient(id: string): readonly [string, string] {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) | 0;
-  }
-  return GRADIENTS[Math.abs(hash) % GRADIENTS.length];
-}
 
 function PlayOverlay({ size }: { size: number }) {
   return (
@@ -48,6 +32,16 @@ function PlayOverlay({ size }: { size: number }) {
   );
 }
 
+function MediaCountBadge({ count }: { count: number }) {
+  if (count <= 1) return null;
+  return (
+    <View style={styles.mediaBadge}>
+      <Ionicons name="images-outline" size={10} color="#fff" />
+      <Text style={styles.mediaBadgeText}>{count}</Text>
+    </View>
+  );
+}
+
 export function ProjectMediaPreview({
   project,
   fallback,
@@ -57,12 +51,14 @@ export function ProjectMediaPreview({
 }: ProjectMediaPreviewProps) {
   const imageUri = project.thumbnail_url ?? (project.media_type !== 'video' ? project.media_url : null);
   const wrapperStyle = [styles.mediaWrapper, { aspectRatio, borderRadius }];
+  const mediaCount = project.project_media?.length ?? 0;
 
   if (imageUri) {
     return (
       <View style={wrapperStyle}>
         <Image source={{ uri: imageUri }} style={styles.media} contentFit="cover" />
         {project.media_type === 'video' ? <PlayOverlay size={playButtonSize} /> : null}
+        <MediaCountBadge count={mediaCount} />
       </View>
     );
   }
@@ -187,5 +183,22 @@ const styles = StyleSheet.create({
   },
   playIcon: {
     marginLeft: 2,
+  },
+  mediaBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  mediaBadgeText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: '#fff',
   },
 });

@@ -7,15 +7,19 @@ interface AppBarProps {
   title: string;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightPress?: () => void;
+  badgeCount?: number;
 }
 
-export function AppBar({ title, rightIcon, onRightPress }: AppBarProps) {
+export function AppBar({ title, rightIcon, onRightPress, badgeCount }: AppBarProps) {
   return (
     <View style={styles.appBar}>
       <Text style={styles.title}>{title}</Text>
       {rightIcon && (
         <Pressable onPress={onRightPress}>
-          <Ionicons name={rightIcon} size={24} color={colors.text.primary} />
+          <View>
+            <Ionicons name={rightIcon} size={24} color={colors.text.primary} />
+            {badgeCount != null && badgeCount > 0 && <View style={styles.badge} />}
+          </View>
         </Pressable>
       )}
     </View>
@@ -35,5 +39,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 22,
     color: colors.text.primary,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
   },
 });

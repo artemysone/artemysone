@@ -12,22 +12,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Image } from 'expo-image';
-import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { getProject } from '@/services/projects';
+import { getProjectMedia } from '@/services/projectMedia';
 import { toggleLike, toggleFollow, getFollowStatus } from '@/services/feed';
 import { getComments, addComment, deleteComment } from '@/services/comments';
 import { Avatar } from '@/components/Avatar';
 import { TagChip } from '@/components/TagChip';
+import { MediaCarousel } from '@/components/MediaCarousel';
 import { ErrorState } from '@/components/ErrorState';
 import { formatCount, timeSince } from '@/utils/format';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { shareProject } from '@/utils/share';
-import type { ProjectWithDetails, CommentWithProfile } from '@/types/database';
+import type { ProjectWithDetails, ProjectMedia, CommentWithProfile } from '@/types/database';
 
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -35,33 +36,29 @@ export default function ProjectDetailScreen() {
   const { user } = useAuth();
 
   const [project, setProject] = useState<ProjectWithDetails | null>(null);
+  const [mediaItems, setMediaItems] = useState<ProjectMedia[]>([]);
   const [comments, setComments] = useState<CommentWithProfile[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
-  const [videoLoading, setVideoLoading] = useState(Platform.OS !== 'web');
-  const [videoError, setVideoError] = useState(false);
-  const videoRef = useCallback((el: HTMLVideoElement | null) => {
-    if (el && el.readyState >= 2) setVideoLoading(false);
-  }, []);
 
   // ---------- Load data ----------
 
   const fetchProject = useCallback(async () => {
     if (!id) return;
     setError(false);
-    setVideoLoading(Platform.OS !== 'web');
-    setVideoError(false);
     setLoading(true);
     try {
-      const [projectData, commentsData] = await Promise.all([
+      const [projectData, commentsData, mediaData] = await Promise.all([
         getProject(id, user?.id),
         getComments(id),
+        getProjectMedia(id),
       ]);
       setProject(projectData);
       setComments(commentsData);
+      setMediaItems(mediaData);
 
       if (user && projectData) {
         const following = await getFollowStatus(user.id, projectData.profiles.id);
@@ -156,7 +153,7 @@ export default function ProjectDetailScreen() {
 
   const handleShare = useCallback(async () => {
     if (!project) return;
-    await shareProject(project.title, project.profiles.handle);
+    await shareProject(project.title, project.profiles.handle, project.id);
   }, [project]);
 
   // ---------- Derived ----------
@@ -225,63 +222,10 @@ export default function ProjectDetailScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* Media */}
-          {project.media_url ? (
-            project.media_type === 'video' ? (
-              <View style={styles.media}>
-                {Platform.OS === 'web' ? (
-                  // Native HTML5 video element — more reliable on web than expo-av
-                  // @ts-ignore: web-only element
-                  <video
-                    ref={videoRef}
-                    src={project.media_url}
-                    controls
-                    autoPlay
-                    playsInline
-                    poster={project.thumbnail_url || undefined}
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
-                    onLoadedData={() => setVideoLoading(false)}
-                    onError={() => setVideoError(true)}
-                  />
-                ) : (
-                  <Video
-                    source={{ uri: project.media_url }}
-                    style={StyleSheet.absoluteFill}
-                    useNativeControls
-                    shouldPlay
-                    resizeMode={ResizeMode.CONTAIN}
-                    posterSource={project.thumbnail_url ? { uri: project.thumbnail_url } : undefined}
-                    usePoster={!!project.thumbnail_url}
-                    onLoad={() => setVideoLoading(false)}
-                    onError={(err) => {
-                      console.error('Video playback error:', err);
-                      setVideoError(true);
-                    }}
-                  />
-                )}
-                {videoLoading && !videoError && (
-                  <View style={styles.mediaOverlay}>
-                    <ActivityIndicator size="large" color={colors.accent} />
-                  </View>
-                )}
-                {videoError && (
-                  <View style={styles.mediaOverlay}>
-                    <Ionicons name="videocam-off-outline" size={32} color={colors.text.tertiary} />
-                    <Text style={styles.videoErrorText}>Video failed to load</Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <Image
-                source={{ uri: project.media_url }}
-                style={styles.media}
-                contentFit="cover"
-              />
-            )
-          ) : (
-            <View style={[styles.media, styles.mediaPlaceholder]}>
-              <Ionicons name="image-outline" size={48} color={colors.text.tertiary} />
-            </View>
-          )}
+          <MediaCarousel
+            items={mediaItems}
+            fallbackProject={project}
+          />
 
           {/* Actions */}
           <View style={styles.actions}>
@@ -307,6 +251,30 @@ export default function ProjectDetailScreen() {
             <Text style={styles.title}>{project.title}</Text>
             <Text style={styles.description}>{project.description}</Text>
           </View>
+
+          {/* Links */}
+          {(project.demo_url || project.repo_url) && (
+            <View style={styles.linksSection}>
+              {project.demo_url && (
+                <Pressable
+                  style={styles.linkRow}
+                  onPress={() => WebBrowser.openBrowserAsync(project.demo_url!)}
+                >
+                  <Ionicons name="globe-outline" size={18} color={colors.accent} />
+                  <Text style={styles.linkText} numberOfLines={1}>Live Demo</Text>
+                </Pressable>
+              )}
+              {project.repo_url && (
+                <Pressable
+                  style={styles.linkRow}
+                  onPress={() => WebBrowser.openBrowserAsync(project.repo_url!)}
+                >
+                  <Ionicons name="logo-github" size={18} color={colors.accent} />
+                  <Text style={styles.linkText} numberOfLines={1}>Source Code</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {/* Tags */}
           {tags.length > 0 && (
@@ -478,30 +446,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
 
-  // Media
-  media: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    backgroundColor: colors.card,
-  },
-  mediaPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.input,
-  },
-  mediaOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  videoErrorText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: '#fff',
-    marginTop: 8,
-  },
-
   // Actions
   actions: {
     flexDirection: 'row',
@@ -538,6 +482,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text.secondary,
     lineHeight: 21,
+  },
+
+  // Links
+  linksSection: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  linkText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.accent,
+    flex: 1,
   },
 
   // Tags

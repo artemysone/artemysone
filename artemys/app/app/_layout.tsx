@@ -1,6 +1,7 @@
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -30,6 +31,7 @@ function RootNavigator() {
   const segments = useSegments();
   const router = useRouter();
 
+  // Auth routing
   useEffect(() => {
     if (loading) return;
 
@@ -42,6 +44,28 @@ function RootNavigator() {
     }
   }, [session, loading, segments]);
 
+  // Deep link handling for patterns expo-router can't resolve from file structure
+  const url = Linking.useURL();
+
+  useEffect(() => {
+    if (!url || loading || !session) return;
+
+    try {
+      const { path } = Linking.parse(url);
+      if (!path) return;
+
+      // /@handle → /user/[id] (look up by handle)
+      const handleMatch = path.match(/^@(.+)$/);
+      if (handleMatch) {
+        router.push({ pathname: '/user/[id]', params: { id: handleMatch[1] } });
+        return;
+      }
+
+      // /project/:id → expo-router handles automatically
+      // /user/:id → expo-router handles automatically
+    } catch {}
+  }, [url, loading, session]);
+
   return (
     <>
       <StatusBar style="dark" />
@@ -50,6 +74,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="project" />
         <Stack.Screen name="user" />
+        <Stack.Screen name="notifications" />
       </Stack>
     </>
   );

@@ -30,8 +30,9 @@ export async function getProject(projectId: string, currentUserId?: string): Pro
       collaborators(*, profiles(*))
     `)
     .eq('id', projectId)
-    .single();
-  if (error || !data) return null;
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
 
   const [likes, comments, userLike] = await Promise.all([
     supabase.from('likes').select('user_id', { count: 'exact', head: true }).eq('project_id', projectId),
@@ -40,6 +41,9 @@ export async function getProject(projectId: string, currentUserId?: string): Pro
       ? supabase.from('likes').select('user_id').eq('project_id', projectId).eq('user_id', currentUserId).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  if (likes.error) throw likes.error;
+  if (comments.error) throw comments.error;
+  if ('error' in userLike && userLike.error) throw userLike.error;
 
   return {
     ...(data as ProjectRelationsRow),
@@ -67,6 +71,7 @@ export async function uploadProjectMedia(
 ): Promise<{ mediaUrl: string; thumbnailUrl?: string }> {
   const ext = getFileExtension(uri, mediaType === 'video' ? 'mp4' : 'jpg');
   const path = `${userId}/${projectId}/media.${ext}`;
+  const thumbPath = `${userId}/${projectId}/thumb.jpg`;
 
   const blob = await readUriAsBlob(uri, 'Failed to read the selected project media.');
   const contentType = getMediaContentType(mediaType, ext);
@@ -91,7 +96,6 @@ export async function uploadProjectMedia(
       }
 
       if (thumbBlob) {
-        const thumbPath = `${userId}/${projectId}/thumb.jpg`;
         const { error: thumbError } = await supabase.storage
           .from('project-media')
           .upload(thumbPath, thumbBlob, { upsert: true, contentType: 'image/jpeg' });
@@ -99,7 +103,7 @@ export async function uploadProjectMedia(
           const { data: { publicUrl: thumbPublicUrl } } = supabase.storage
             .from('project-media')
             .getPublicUrl(thumbPath);
-          thumbnailUrl = thumbPublicUrl;
+          thumbnailUrl = `${thumbPublicUrl}?t=${Date.now()}`;
         }
       }
     } catch (err) {
@@ -116,7 +120,8 @@ export async function uploadProjectMedia(
     })
     .eq('id', projectId);
   if (updateError) {
-    await supabase.storage.from('project-media').remove([path]);
+    const pathsToRemove = thumbnailUrl ? [path, thumbPath] : [path];
+    await supabase.storage.from('project-media').remove(pathsToRemove);
     throw updateError;
   }
 

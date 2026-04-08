@@ -16,6 +16,7 @@ import { ProjectCard } from '@/components/ProjectCard';
 import { ErrorState } from '@/components/ErrorState';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import { shareProject } from '@/utils/share';
 import type { FeedItem } from '@/types/database';
 
 export default function FeedScreen() {
@@ -28,12 +29,16 @@ export default function FeedScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isDiscover, setIsDiscover] = useState(false);
-  const [error, setError] = useState(false);
+  const [initialLoadError, setInitialLoadError] = useState(false);
 
   const loadFeed = useCallback(
-    async (pageNum: number, replace: boolean, discoverMode?: boolean) => {
-      if (!user) return;
-      setError(false);
+    async (
+      pageNum: number,
+      replace: boolean,
+      discoverMode?: boolean,
+      showErrorState = false,
+    ): Promise<boolean> => {
+      if (!user) return false;
       const useDiscover = discoverMode ?? isDiscover;
       try {
         let data: FeedItem[];
@@ -52,9 +57,11 @@ export default function FeedScreen() {
         if (data.length < 10) setHasMore(false);
 
         setItems((prev) => (replace ? data : [...prev, ...data]));
+        return true;
       } catch (err) {
         console.error('Failed to load feed:', err);
-        setError(true);
+        if (showErrorState) setInitialLoadError(true);
+        return false;
       }
     },
     [user, isDiscover],
@@ -64,7 +71,8 @@ export default function FeedScreen() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await loadFeed(0, true);
+      setInitialLoadError(false);
+      await loadFeed(0, true, undefined, true);
       setLoading(false);
     })();
   }, [loadFeed]);
@@ -72,7 +80,6 @@ export default function FeedScreen() {
   // Pull-to-refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    setError(false);
     setPage(0);
     setHasMore(true);
     setIsDiscover(false);
@@ -82,7 +89,8 @@ export default function FeedScreen() {
 
   const handleRetry = useCallback(async () => {
     setLoading(true);
-    await loadFeed(0, true);
+    setInitialLoadError(false);
+    await loadFeed(0, true, undefined, true);
     setLoading(false);
   }, [loadFeed]);
 
@@ -91,8 +99,8 @@ export default function FeedScreen() {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     const nextPage = page + 1;
-    setPage(nextPage);
-    await loadFeed(nextPage, false);
+    const loaded = await loadFeed(nextPage, false);
+    if (loaded) setPage(nextPage);
     setLoadingMore(false);
   }, [hasMore, loadingMore, page, loadFeed]);
 
@@ -163,6 +171,10 @@ export default function FeedScreen() {
     [user],
   );
 
+  const handleShare = useCallback(async (project: FeedItem) => {
+    await shareProject(project.title, project.profiles.handle);
+  }, []);
+
   // ---------- Render helpers ----------
 
   const renderItem = useCallback(
@@ -173,11 +185,12 @@ export default function FeedScreen() {
         isOwnProject={item.user_id === user?.id}
         onLike={() => handleLike(item.id)}
         onFollow={() => handleFollow(item.profiles.id)}
+        onShare={() => handleShare(item)}
         onPress={() => router.push({ pathname: '/project/[id]', params: { id: item.id } })}
         onAuthorPress={() => router.push({ pathname: '/user/[id]', params: { id: item.profiles.id } })}
       />
     ),
-    [handleLike, handleFollow, router],
+    [handleLike, handleFollow, handleShare, router, user?.id],
   );
 
   const keyExtractor = useCallback((item: FeedItem) => item.id, []);
@@ -203,7 +216,7 @@ export default function FeedScreen() {
     );
   }, [loading]);
 
-  if (error && !loading) {
+  if (initialLoadError && !loading && items.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <AppBar title="Feed" />

@@ -57,15 +57,22 @@ export function extractVideoThumbnailWeb(videoUri: string): Promise<Blob | null>
       resolve(result);
     };
 
-    video.onloadeddata = () => { video.currentTime = 0.1; };
-
-    video.onseeked = () => {
+    const captureFrame = () => {
       try {
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        if (!canvas.width || !canvas.height) {
+          done(null);
+          return;
+        }
+
         const ctx = canvas.getContext('2d');
-        if (!ctx) { done(null); return; }
+        if (!ctx) {
+          done(null);
+          return;
+        }
+
         ctx.drawImage(video, 0, 0);
         canvas.toBlob(
           (blob) => done(blob),
@@ -77,6 +84,20 @@ export function extractVideoThumbnailWeb(videoUri: string): Promise<Blob | null>
       }
     };
 
+    video.onloadedmetadata = () => {
+      const seekTime = Number.isFinite(video.duration) && video.duration > 0
+        ? Math.min(0.1, video.duration / 2)
+        : 0;
+
+      if (seekTime <= 0) {
+        captureFrame();
+        return;
+      }
+
+      video.currentTime = seekTime;
+    };
+
+    video.onseeked = captureFrame;
     video.onerror = () => done(null);
 
     const timer = setTimeout(() => done(null), 10000);

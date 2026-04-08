@@ -35,7 +35,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Artemys to access your photos so you can share avatars and project media.",
+          "cameraPermission": "Allow Artemys to use your camera so you can capture avatars and project media.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -10,15 +10,19 @@ export async function getProfile(userId: string): Promise<ProfileWithStats | nul
     .from('profiles')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) throw error;
+  if (!data) return null;
 
   const [projects, followers, following] = await Promise.all([
     supabase.from('projects').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', userId),
     supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', userId),
   ]);
+  if (projects.error) throw projects.error;
+  if (followers.error) throw followers.error;
+  if (following.error) throw following.error;
 
   return {
     ...(data as Profile),

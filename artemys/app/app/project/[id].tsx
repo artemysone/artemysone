@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -27,6 +26,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { formatCount, timeSince } from '@/utils/format';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import { shareProject } from '@/utils/share';
 import type { ProjectWithDetails, CommentWithProfile } from '@/types/database';
 
 export default function ProjectDetailScreen() {
@@ -52,6 +52,8 @@ export default function ProjectDetailScreen() {
   const fetchProject = useCallback(async () => {
     if (!id) return;
     setError(false);
+    setVideoLoading(Platform.OS !== 'web');
+    setVideoError(false);
     setLoading(true);
     try {
       const [projectData, commentsData] = await Promise.all([
@@ -154,12 +156,7 @@ export default function ProjectDetailScreen() {
 
   const handleShare = useCallback(async () => {
     if (!project) return;
-    try {
-      await Share.share({
-        title: project.title,
-        message: `Check out "${project.title}" on Artemys`,
-      });
-    } catch {}
+    await shareProject(project.title, project.profiles.handle);
   }, [project]);
 
   // ---------- Derived ----------

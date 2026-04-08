@@ -1,10 +1,10 @@
 import { memo } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 import { TagChip } from './TagChip';
 import { CollaboratorStack } from './CollaboratorStack';
+import { ProjectMediaPreview } from './ProjectMediaPreview';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { formatCount, timeSince } from '@/utils/format';
@@ -19,58 +19,6 @@ interface ProjectCardProps {
   onShare?: () => void;
   onPress?: () => void;
   onAuthorPress?: () => void;
-}
-
-function renderMedia(project: ProjectWithDetails) {
-  const imageUri = project.thumbnail_url
-    ?? (project.media_type !== 'video' ? project.media_url : null);
-
-  if (imageUri) {
-    return (
-      <View style={styles.mediaWrapper}>
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.media}
-          contentFit="cover"
-        />
-        {project.media_type === 'video' && (
-          <View style={styles.playOverlay}>
-            <View style={styles.playButton}>
-              <Ionicons name="play" size={24} color="#fff" style={styles.playIcon} />
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  }
-
-  if (project.media_type === 'video' && project.media_url) {
-    return (
-      <View style={[styles.mediaWrapper, styles.videoPlaceholder]}>
-        {Platform.OS === 'web' && (
-          // @ts-ignore: web-only element
-          <video
-            src={project.media_url}
-            muted
-            playsInline
-            preload="metadata"
-            style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        )}
-        <View style={styles.playOverlay}>
-          <View style={styles.playButton}>
-            <Ionicons name="play" size={24} color="#fff" style={styles.playIcon} />
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.media, styles.mediaPlaceholder]}>
-      <Ionicons name="image-outline" size={48} color={colors.text.tertiary} />
-    </View>
-  );
 }
 
 export const ProjectCard = memo(function ProjectCard({ project, isFollowing, isOwnProject, onLike, onFollow, onShare, onPress, onAuthorPress }: ProjectCardProps) {
@@ -101,7 +49,12 @@ export const ProjectCard = memo(function ProjectCard({ project, isFollowing, isO
         )}
       </View>
 
-      {renderMedia(project)}
+      <ProjectMediaPreview
+        project={project}
+        fallback="icon"
+        aspectRatio={4 / 3}
+        playButtonSize={56}
+      />
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -195,45 +148,6 @@ const styles = StyleSheet.create({
   },
   followBtnTextActive: {
     color: colors.accent,
-  },
-  mediaWrapper: {
-    position: 'relative',
-    width: '100%',
-    aspectRatio: 4 / 3,
-  },
-  media: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-  },
-  mediaPlaceholder: {
-    backgroundColor: colors.input,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoPlaceholder: {
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playIcon: {
-    marginLeft: 2,
   },
   actions: {
     flexDirection: 'row',

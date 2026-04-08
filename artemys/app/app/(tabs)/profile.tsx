@@ -16,13 +16,12 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProfile } from '@/services/profiles';
 import { getUserProjects } from '@/services/projects';
-import { Avatar } from '@/components/Avatar';
 import { AppBar } from '@/components/AppBar';
 import { ProjectThumb, THUMB_GAP, thumbStyles } from '@/components/ProjectThumb';
 import { ErrorState } from '@/components/ErrorState';
+import { ProfileHeader } from '@/components/ProfileHeader';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
-import { formatCount } from '@/utils/format';
 import { shareProfile } from '@/utils/share';
 import type { ProfileWithStats, Project } from '@/types/database';
 
@@ -73,15 +72,16 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
-  const lastFetched = useRef(0);
+  const hasLoadedOnce = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      const isInitial = !lastFetched.current;
-      if (!isInitial && Date.now() - lastFetched.current < 30_000) return;
       let mounted = true;
-      if (isInitial) setLoading(true);
+      if (!hasLoadedOnce.current) setLoading(true);
       fetchData().finally(() => {
-        if (mounted) { setLoading(false); lastFetched.current = Date.now(); }
+        if (mounted) {
+          setLoading(false);
+          hasLoadedOnce.current = true;
+        }
       });
       return () => { mounted = false; };
     }, [fetchData]),
@@ -118,42 +118,26 @@ export default function ProfileScreen() {
 
   const listHeader = useMemo(() => (
     <>
-      <View style={styles.profileHeader}>
-        <Avatar uri={profileData?.avatar_url} name={name} size="lg" showRing />
-        <Text style={styles.profileName}>{name}</Text>
-        {handle ? <Text style={styles.profileHandle}>{handle}</Text> : null}
-        {bio ? <Text style={styles.profileBio}>{bio}</Text> : null}
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statNum}>{formatCount(projectCount)}</Text>
-            <Text style={styles.statLabel}>Projects</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statNum}>{formatCount(followerCount)}</Text>
-            <Text style={styles.statLabel}>Followers</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statNum}>{formatCount(followingCount)}</Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </View>
-        </View>
-      </View>
-      <View style={styles.profileActions}>
-        <Pressable style={styles.editBtn} onPress={() => router.push('/profile-edit')}>
-          <Text style={styles.editBtnText}>Edit Profile</Text>
-        </Pressable>
-        <Pressable style={styles.shareBtn} onPress={handleShareProfile}>
-          <Ionicons name="share-outline" size={16} color={colors.text.primary} />
-        </Pressable>
-      </View>
-      {projects.length > 0 && (
-        <View style={styles.gridHeader}>
-          <Text style={styles.gridTitle}>Projects</Text>
-          <Text style={styles.gridCount}>
-            {projectCount} {projectCount === 1 ? 'project' : 'projects'}
-          </Text>
-        </View>
-      )}
+      <ProfileHeader
+        profile={profileData}
+        name={name}
+        handle={handle}
+        bio={bio}
+        projectCount={projectCount}
+        followerCount={followerCount}
+        followingCount={followingCount}
+        showProjectsHeader={projects.length > 0}
+        actions={(
+          <>
+            <Pressable style={styles.editBtn} onPress={() => router.push('/profile-edit')}>
+              <Text style={styles.editBtnText}>Edit Profile</Text>
+            </Pressable>
+            <Pressable style={styles.shareBtn} onPress={handleShareProfile}>
+              <Ionicons name="share-outline" size={16} color={colors.text.primary} />
+            </Pressable>
+          </>
+        )}
+      />
     </>
   ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, router, handleShareProfile]);
 
@@ -218,57 +202,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileHeader: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-  },
-  profileName: {
-    fontFamily: fonts.display,
-    fontSize: 20,
-    color: colors.text.primary,
-    marginTop: 12,
-  },
-  profileHandle: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  profileBio: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.primary,
-    textAlign: 'center',
-    lineHeight: 21,
-    marginTop: 10,
-    maxWidth: 280,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 32,
-    marginTop: 18,
-    paddingBottom: 18,
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statNum: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.text.primary,
-  },
-  statLabel: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  profileActions: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: spacing.lg,
-  },
   editBtn: {
     flex: 1,
     padding: 9,
@@ -290,24 +223,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  gridHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: 12,
-  },
-  gridTitle: {
-    fontFamily: fonts.display,
-    fontSize: 16,
-    color: colors.text.primary,
-  },
-  gridCount: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.text.secondary,
   },
   gridContainer: {
     paddingBottom: spacing.lg,

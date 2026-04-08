@@ -61,8 +61,7 @@ export async function getFeed(userId: string, page = 0): Promise<FeedItem[]> {
     .eq('follower_id', userId);
   if (followError) throw followError;
 
-  const followingIds = (followRows ?? []).map((r) => r.following_id);
-  if (followingIds.length === 0) return [];
+  const followingIds = [...new Set([userId, ...(followRows ?? []).map((r) => r.following_id)])];
 
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -87,6 +86,7 @@ export async function getDiscoverFeed(userId: string, page = 0): Promise<FeedIte
   const { data, error } = await supabase
     .from('projects')
     .select(PROJECT_SELECT)
+    .neq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(from, to);
 

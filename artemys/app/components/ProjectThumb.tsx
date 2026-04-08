@@ -1,6 +1,7 @@
 import { View, Pressable, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import type { Project } from '@/types/database';
 
 export const THUMB_GAP = 2;
@@ -40,12 +41,21 @@ export function ProjectThumb({
   if (hasThumbnail && imageUri) {
     return (
       <Pressable style={[styles.thumb, { maxWidth: thumbSize }]} onPress={onPress}>
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.thumbImage}
-          contentFit="cover"
-          transition={200}
-        />
+        <View style={styles.thumbImageWrapper}>
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.thumbImage}
+            contentFit="cover"
+            transition={200}
+          />
+          {project.media_type === 'video' && (
+            <View style={styles.thumbPlayOverlay}>
+              <View style={styles.thumbPlayButton}>
+                <Ionicons name="play" size={12} color="#fff" style={{ marginLeft: 1 }} />
+              </View>
+            </View>
+          )}
+        </View>
       </Pressable>
     );
   }
@@ -76,9 +86,30 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
   },
+  thumbImageWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
   thumbImage: {
     flex: 1,
     borderRadius: 2,
+  },
+  thumbPlayOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbPlayButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   thumbGradient: {
     flex: 1,

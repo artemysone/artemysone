@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   useWindowDimensions,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,6 +106,15 @@ export default function UserProfileScreen() {
     [router],
   );
 
+  const handleShareProfile = useCallback(async () => {
+    if (!profileData) return;
+    try {
+      await Share.share({
+        message: `Check out ${profileData.name} (@${profileData.handle}) on Artemys`,
+      });
+    } catch {}
+  }, [profileData]);
+
   const name = profileData?.name ?? 'Builder';
   const handle = profileData?.handle ? `@${profileData.handle}` : '';
   const bio = profileData?.bio ?? '';
@@ -143,7 +153,7 @@ export default function UserProfileScreen() {
             {isFollowing ? 'Following' : 'Follow'}
           </Text>
         </Pressable>
-        <Pressable style={styles.shareBtn}>
+        <Pressable style={styles.shareBtn} onPress={handleShareProfile}>
           <Ionicons name="share-outline" size={16} color={colors.text.primary} />
         </Pressable>
       </View>
@@ -156,7 +166,7 @@ export default function UserProfileScreen() {
         </View>
       )}
     </>
-  ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, isFollowing, handleFollow]);
+  ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, isFollowing, handleFollow, handleShareProfile]);
 
   if (loading) {
     return (

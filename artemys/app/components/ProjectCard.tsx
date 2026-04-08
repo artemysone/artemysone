@@ -15,11 +15,12 @@ interface ProjectCardProps {
   isFollowing?: boolean;
   onLike?: () => void;
   onFollow?: () => void;
+  onShare?: () => void;
   onPress?: () => void;
   onAuthorPress?: () => void;
 }
 
-export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onLike, onFollow, onPress, onAuthorPress }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onLike, onFollow, onShare, onPress, onAuthorPress }: ProjectCardProps) {
   const { profiles: author } = project;
   const tags = project.project_tags?.map((pt) => pt.tags) ?? [];
   const collabs = project.collaborators?.map((c) => ({
@@ -47,12 +48,23 @@ export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onL
 
       {/* Media */}
       {project.media_url ? (
-        <Image source={{ uri: project.media_url }} style={styles.media} contentFit="cover" />
+        <View style={styles.mediaWrapper}>
+          <Image
+            source={{ uri: project.thumbnail_url ?? project.media_url }}
+            style={styles.media}
+            contentFit="cover"
+          />
+          {project.media_type === 'video' && (
+            <View style={styles.playOverlay}>
+              <View style={styles.playButton}>
+                <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 2 }} />
+              </View>
+            </View>
+          )}
+        </View>
       ) : (
         <View style={[styles.media, styles.mediaPlaceholder]}>
-          <View style={styles.playButton}>
-            <Ionicons name="play" size={24} color="#fff" style={{ marginLeft: 2 }} />
-          </View>
+          <Ionicons name="image-outline" size={48} color={colors.text.tertiary} />
         </View>
       )}
 
@@ -70,7 +82,7 @@ export const ProjectCard = memo(function ProjectCard({ project, isFollowing, onL
           <Ionicons name="chatbubble-outline" size={20} color={colors.text.primary} />
           <Text style={styles.actionText}>{formatCount(project.comment_count)}</Text>
         </Pressable>
-        <Pressable style={styles.actionBtn}>
+        <Pressable style={styles.actionBtn} onPress={onShare}>
           <Ionicons name="share-outline" size={22} color={colors.text.primary} />
         </Pressable>
       </View>
@@ -149,12 +161,26 @@ const styles = StyleSheet.create({
   followBtnTextActive: {
     color: colors.accent,
   },
+  mediaWrapper: {
+    position: 'relative',
+    width: '100%',
+    aspectRatio: 4 / 3,
+  },
   media: {
     width: '100%',
     aspectRatio: 4 / 3,
   },
   mediaPlaceholder: {
     backgroundColor: colors.input,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },

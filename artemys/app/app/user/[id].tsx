@@ -49,6 +49,7 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [error, setError] = useState(false);
 
   // If viewing own profile, redirect to tabs profile
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function UserProfileScreen() {
 
   const fetchData = useCallback(async () => {
     if (!id || id === user?.id) return;
+    setError(false);
     try {
       const [prof, projs, followStatus] = await Promise.all([
         getProfile(id),
@@ -70,6 +72,7 @@ export default function UserProfileScreen() {
       setIsFollowing(followStatus);
     } catch (err) {
       console.error('Failed to load user profile:', err);
+      setError(true);
     }
   }, [id, user]);
 
@@ -84,6 +87,7 @@ export default function UserProfileScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    setError(false);
     await fetchData();
     setRefreshing(false);
   }, [fetchData]);
@@ -170,6 +174,28 @@ export default function UserProfileScreen() {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
+          </Pressable>
+          <Text style={styles.headerTitle} numberOfLines={1}>Profile</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.tertiary} />
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorBody}>Check your connection and try again.</Text>
+          <Pressable style={styles.retryBtn} onPress={fetchData}>
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -381,5 +407,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 21,
     maxWidth: 260,
+  },
+  // Error state
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+  errorTitle: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text.primary,
+    marginTop: spacing.sm,
+  },
+  errorBody: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  retryText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.accent,
   },
 });

@@ -3,11 +3,13 @@ import {
   View,
   Text,
   FlatList,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFeed, getDiscoverFeed, toggleLike, toggleFollow } from '@/services/feed';
@@ -27,10 +29,12 @@ export default function FeedScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isDiscover, setIsDiscover] = useState(false);
+  const [error, setError] = useState(false);
 
   const loadFeed = useCallback(
     async (pageNum: number, replace: boolean, discoverMode?: boolean) => {
       if (!user) return;
+      setError(false);
       const useDiscover = discoverMode ?? isDiscover;
       try {
         let data: FeedItem[];
@@ -51,6 +55,7 @@ export default function FeedScreen() {
         setItems((prev) => (replace ? data : [...prev, ...data]));
       } catch (err) {
         console.error('Failed to load feed:', err);
+        setError(true);
       }
     },
     [user, isDiscover],
@@ -68,11 +73,18 @@ export default function FeedScreen() {
   // Pull-to-refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    setError(false);
     setPage(0);
     setHasMore(true);
     setIsDiscover(false);
     await loadFeed(0, true, false);
     setRefreshing(false);
+  }, [loadFeed]);
+
+  const handleRetry = useCallback(async () => {
+    setLoading(true);
+    await loadFeed(0, true);
+    setLoading(false);
   }, [loadFeed]);
 
   // Infinite scroll
@@ -191,9 +203,25 @@ export default function FeedScreen() {
     );
   }, [loading]);
 
+  if (error && !loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <AppBar title="Feed" />
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.tertiary} />
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorBody}>Check your connection and try again.</Text>
+          <Pressable style={styles.retryBtn} onPress={handleRetry}>
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppBar title="Feed" rightIcon="notifications-outline" />
+      <AppBar title="Feed" />
 
       {loading ? (
         <View style={styles.loading}>
@@ -253,5 +281,37 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+  errorTitle: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text.primary,
+    marginTop: spacing.sm,
+  },
+  errorBody: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  retryText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.accent,
   },
 });

@@ -38,33 +38,37 @@ export default function ProjectDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(false);
 
   // ---------- Load data ----------
 
-  useEffect(() => {
+  const fetchProject = useCallback(async () => {
     if (!id) return;
+    setError(false);
+    setLoading(true);
+    try {
+      const [projectData, commentsData] = await Promise.all([
+        getProject(id, user?.id),
+        getComments(id),
+      ]);
+      setProject(projectData);
+      setComments(commentsData);
 
-    (async () => {
-      setLoading(true);
-      try {
-        const [projectData, commentsData] = await Promise.all([
-          getProject(id, user?.id),
-          getComments(id),
-        ]);
-        setProject(projectData);
-        setComments(commentsData);
-
-        if (user && projectData) {
-          const following = await getFollowStatus(user.id, projectData.profiles.id);
-          setIsFollowing(following);
-        }
-      } catch (err) {
-        console.error('Failed to load project:', err);
-      } finally {
-        setLoading(false);
+      if (user && projectData) {
+        const following = await getFollowStatus(user.id, projectData.profiles.id);
+        setIsFollowing(following);
       }
-    })();
+    } catch (err) {
+      console.error('Failed to load project:', err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [id, user?.id]);
+
+  useEffect(() => {
+    fetchProject();
+  }, [fetchProject]);
 
   // ---------- Actions ----------
 
@@ -166,6 +170,22 @@ export default function ProjectDetailScreen() {
         {header}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {header}
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.tertiary} />
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorBody}>Check your connection and try again.</Text>
+          <Pressable style={styles.retryBtn} onPress={fetchProject}>
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -629,5 +649,39 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     backgroundColor: colors.text.tertiary,
+  },
+
+  // Error state
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+  errorTitle: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text.primary,
+    marginTop: spacing.sm,
+  },
+  errorBody: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  retryText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.accent,
   },
 });

@@ -87,7 +87,6 @@ export async function getDiscoverFeed(userId: string, page = 0): Promise<FeedIte
   const { data, error } = await supabase
     .from('projects')
     .select(PROJECT_SELECT)
-    .neq('user_id', userId)
     .order('created_at', { ascending: false })
     .range(from, to);
 

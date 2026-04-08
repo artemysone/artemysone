@@ -1,6 +1,8 @@
+import { Platform } from 'react-native';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 import { supabase } from '@/lib/supabase';
 import type { CreateProjectInput, Project, ProjectRelationsRow, ProjectWithDetails } from '@/types/database';
-import { getFileExtension, getMediaContentType, readUriAsBlob } from '@/utils/media';
+import { getFileExtension, getMediaContentType, readUriAsBlob, extractVideoThumbnailWeb } from '@/utils/media';
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const { data: project, error } = await supabase.rpc('create_project_with_relations', {
@@ -75,16 +77,50 @@ export async function uploadProjectMedia(
 
   const { data: { publicUrl } } = supabase.storage.from('project-media').getPublicUrl(path);
 
+  // Generate thumbnail for video
+  let thumbnailUrl: string | undefined;
+  if (mediaType === 'video') {
+    try {
+      let thumbBlob: Blob | null = null;
+
+      if (Platform.OS === 'web') {
+        thumbBlob = await extractVideoThumbnailWeb(uri);
+      } else {
+        const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(uri, { time: 0 });
+        thumbBlob = await readUriAsBlob(thumbUri, 'Failed to read video thumbnail.');
+      }
+
+      if (thumbBlob) {
+        const thumbPath = `${userId}/${projectId}/thumb.jpg`;
+        const { error: thumbError } = await supabase.storage
+          .from('project-media')
+          .upload(thumbPath, thumbBlob, { upsert: true, contentType: 'image/jpeg' });
+        if (!thumbError) {
+          const { data: { publicUrl: thumbPublicUrl } } = supabase.storage
+            .from('project-media')
+            .getPublicUrl(thumbPath);
+          thumbnailUrl = thumbPublicUrl;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to generate video thumbnail:', err);
+    }
+  }
+
   const { error: updateError } = await supabase
     .from('projects')
-    .update({ media_url: publicUrl, media_type: mediaType })
+    .update({
+      media_url: publicUrl,
+      media_type: mediaType,
+      ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : {}),
+    })
     .eq('id', projectId);
   if (updateError) {
     await supabase.storage.from('project-media').remove([path]);
     throw updateError;
   }
 
-  return { mediaUrl: publicUrl };
+  return { mediaUrl: publicUrl, thumbnailUrl };
 }
 
 export async function deleteProject(projectId: string) {

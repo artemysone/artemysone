@@ -1,4 +1,4 @@
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,10 +35,10 @@ export function ProjectThumb({
   thumbSize: number;
   onPress?: () => void;
 }) {
-  const hasThumbnail = project.thumbnail_url || project.media_url;
-  const imageUri = project.thumbnail_url ?? project.media_url;
+  const imageUri = project.thumbnail_url
+    ?? (project.media_type !== 'video' ? project.media_url : null);
 
-  if (hasThumbnail && imageUri) {
+  if (imageUri) {
     return (
       <Pressable style={[styles.thumb, { maxWidth: thumbSize }]} onPress={onPress}>
         <View style={styles.thumbImageWrapper}>
@@ -55,6 +55,29 @@ export function ProjectThumb({
               </View>
             </View>
           )}
+        </View>
+      </Pressable>
+    );
+  }
+
+  // Video without thumbnail — show first frame on web, gradient on native
+  if (project.media_type === 'video' && project.media_url && Platform.OS === 'web') {
+    return (
+      <Pressable style={[styles.thumb, { maxWidth: thumbSize }]} onPress={onPress}>
+        <View style={styles.thumbImageWrapper}>
+          {/* @ts-ignore: web-only element — renders first frame as preview */}
+          <video
+            src={project.media_url}
+            muted
+            playsInline
+            preload="metadata"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 2 }}
+          />
+          <View style={styles.thumbPlayOverlay}>
+            <View style={styles.thumbPlayButton}>
+              <Ionicons name="play" size={12} color="#fff" style={styles.thumbPlayIcon} />
+            </View>
+          </View>
         </View>
       </Pressable>
     );

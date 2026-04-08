@@ -70,9 +70,10 @@ export async function uploadAvatar(userId: string, uri: string): Promise<string>
   if (error) throw error;
 
   const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+  const avatarUrl = `${publicUrl}?t=${Date.now()}`;
 
-  await updateProfile(userId, { avatar_url: publicUrl });
-  return publicUrl;
+  await updateProfile(userId, { avatar_url: avatarUrl });
+  return avatarUrl;
 }
 
 export async function searchProfiles(query: string, limit = 10): Promise<Profile[]> {

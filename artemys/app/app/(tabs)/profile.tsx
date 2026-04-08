@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProfile } from '@/services/profiles';
 import { getUserProjects } from '@/services/projects';
@@ -73,14 +73,19 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    fetchData().finally(() => {
-      if (mounted) setLoading(false);
-    });
-    return () => { mounted = false; };
-  }, [fetchData]);
+  const lastFetched = useRef(0);
+  useFocusEffect(
+    useCallback(() => {
+      const isInitial = !lastFetched.current;
+      if (!isInitial && Date.now() - lastFetched.current < 30_000) return;
+      let mounted = true;
+      if (isInitial) setLoading(true);
+      fetchData().finally(() => {
+        if (mounted) { setLoading(false); lastFetched.current = Date.now(); }
+      });
+      return () => { mounted = false; };
+    }, [fetchData]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -41,6 +41,11 @@ export default function ProjectDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(Platform.OS !== 'web');
+  const [videoError, setVideoError] = useState(false);
+  const videoRef = useCallback((el: HTMLVideoElement | null) => {
+    if (el && el.readyState >= 2) setVideoLoading(false);
+  }, []);
 
   // ---------- Load data ----------
 
@@ -225,12 +230,49 @@ export default function ProjectDetailScreen() {
           {/* Media */}
           {project.media_url ? (
             project.media_type === 'video' ? (
-              <Video
-                source={{ uri: project.media_url }}
-                style={styles.media}
-                useNativeControls
-                resizeMode={ResizeMode.CONTAIN}
-              />
+              <View style={styles.media}>
+                {Platform.OS === 'web' ? (
+                  // Native HTML5 video element — more reliable on web than expo-av
+                  // @ts-ignore: web-only element
+                  <video
+                    ref={videoRef}
+                    src={project.media_url}
+                    controls
+                    autoPlay
+                    playsInline
+                    poster={project.thumbnail_url || undefined}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#000' }}
+                    onLoadedData={() => setVideoLoading(false)}
+                    onError={() => setVideoError(true)}
+                  />
+                ) : (
+                  <Video
+                    source={{ uri: project.media_url }}
+                    style={StyleSheet.absoluteFill}
+                    useNativeControls
+                    shouldPlay
+                    resizeMode={ResizeMode.CONTAIN}
+                    posterSource={project.thumbnail_url ? { uri: project.thumbnail_url } : undefined}
+                    usePoster={!!project.thumbnail_url}
+                    onLoad={() => setVideoLoading(false)}
+                    onError={(err) => {
+                      console.error('Video playback error:', err);
+                      setVideoError(true);
+                    }}
+                  />
+                )}
+                {videoLoading && !videoError && (
+                  <View style={styles.mediaOverlay}>
+                    <ActivityIndicator size="large" color={colors.accent} />
+                  </View>
+                )}
+                {videoError && (
+                  <View style={styles.mediaOverlay}>
+                    <Ionicons name="videocam-off-outline" size={32} color={colors.text.tertiary} />
+                    <Text style={styles.videoErrorText}>Video failed to load</Text>
+                  </View>
+                )}
+              </View>
             ) : (
               <Image
                 source={{ uri: project.media_url }}
@@ -449,6 +491,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.input,
+  },
+  mediaOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  videoErrorText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: '#fff',
+    marginTop: 8,
   },
 
   // Actions

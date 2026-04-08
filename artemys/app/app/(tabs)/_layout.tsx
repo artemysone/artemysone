@@ -59,13 +59,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    height: 72,
+    height: 80,
     paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 12,
   },
   tabLabel: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.3,
   },
   createButton: {

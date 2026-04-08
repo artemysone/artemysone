@@ -170,6 +170,7 @@ export default function FeedScreen() {
       <ProjectCard
         project={item}
         isFollowing={item.user_is_following}
+        isOwnProject={item.user_id === user?.id}
         onLike={() => handleLike(item.id)}
         onFollow={() => handleFollow(item.profiles.id)}
         onPress={() => router.push({ pathname: '/project/[id]', params: { id: item.id } })}

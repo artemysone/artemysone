@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getNotifications,
@@ -106,7 +105,7 @@ export default function NotificationsScreen() {
         router.push({ pathname: '/project/[id]', params: { id: notification.project_id } });
       }
     },
-    [router],
+    [patchNotification, router],
   );
 
   const handleCollaboratorDecision = useCallback(
@@ -156,7 +155,8 @@ export default function NotificationsScreen() {
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>No notifications yet</Text>
         <Text style={styles.emptyBody}>
-          When someone likes your project, follows you, or tags you as a collaborator, it'll show up here.
+          When someone likes your project, follows you, or tags you as a collaborator, it'll
+          show up here.
         </Text>
       </View>
     );
@@ -165,9 +165,6 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
-        </Pressable>
         <Text style={styles.headerTitle}>Notifications</Text>
         <Pressable onPress={handleMarkAllRead}>
           <Text style={styles.markAllRead}>Mark all read</Text>

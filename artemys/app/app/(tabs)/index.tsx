@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -12,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFeed, getDiscoverFeed, toggleLike, toggleFollow } from '@/services/feed';
-import { getUnreadCount } from '@/services/notifications';
 import { AppBar } from '@/components/AppBar';
 import { ProjectCard } from '@/components/ProjectCard';
 import { ErrorState } from '@/components/ErrorState';
@@ -32,7 +30,6 @@ export default function FeedScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [isDiscover, setIsDiscover] = useState(false);
   const [initialLoadError, setInitialLoadError] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadFeed = useCallback(
     async (
@@ -70,7 +67,6 @@ export default function FeedScreen() {
     [user, isDiscover],
   );
 
-  // Initial load
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -80,15 +76,6 @@ export default function FeedScreen() {
     })();
   }, [loadFeed]);
 
-  // Fetch unread notification count on focus (refreshes after viewing notifications)
-  useFocusEffect(
-    useCallback(() => {
-      if (!user) return;
-      getUnreadCount(user.id).then(setUnreadCount).catch(() => {});
-    }, [user]),
-  );
-
-  // Pull-to-refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     setPage(0);
@@ -105,7 +92,6 @@ export default function FeedScreen() {
     setLoading(false);
   }, [loadFeed]);
 
-  // Infinite scroll
   const handleEndReached = useCallback(async () => {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
@@ -115,12 +101,10 @@ export default function FeedScreen() {
     setLoadingMore(false);
   }, [hasMore, loadingMore, page, loadFeed]);
 
-  // Optimistic like
   const handleLike = useCallback(
     (projectId: string) => {
       if (!user) return;
 
-      // Optimistic update
       setItems((prev) =>
         prev.map((item) =>
           item.id === projectId
@@ -135,7 +119,6 @@ export default function FeedScreen() {
         ),
       );
 
-      // Fire and forget — revert on error
       toggleLike(user.id, projectId).catch(() => {
         setItems((prev) =>
           prev.map((item) =>
@@ -155,12 +138,10 @@ export default function FeedScreen() {
     [user],
   );
 
-  // Optimistic follow
   const handleFollow = useCallback(
     (authorId: string) => {
       if (!user) return;
 
-      // Optimistic: toggle all items by this author
       setItems((prev) =>
         prev.map((item) =>
           item.profiles.id === authorId
@@ -185,8 +166,6 @@ export default function FeedScreen() {
   const handleShare = useCallback(async (project: FeedItem) => {
     await shareProject(project.title, project.profiles.handle, project.id);
   }, []);
-
-  // ---------- Render helpers ----------
 
   const renderItem = useCallback(
     ({ item }: { item: FeedItem }) => (
@@ -227,42 +206,37 @@ export default function FeedScreen() {
     );
   }, [loading]);
 
-  if (initialLoadError && !loading && items.length === 0) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <AppBar title="artemys" rightIcon="notifications-outline" onRightPress={() => router.push('/notifications')} badgeCount={unreadCount} />
-        <ErrorState onRetry={handleRetry} />
-      </SafeAreaView>
+  const content =
+    initialLoadError && !loading && items.length === 0 ? (
+      <ErrorState onRetry={handleRetry} />
+    ) : loading ? (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    ) : (
+      <FlatList
+        data={items}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+        showsVerticalScrollIndicator={false}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent}
+          />
+        }
+      />
     );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppBar title="artemys" rightIcon="notifications-outline" onRightPress={() => router.push('/notifications')} badgeCount={unreadCount} />
-
-      {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={renderEmpty}
-          showsVerticalScrollIndicator={false}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.5}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={colors.accent}
-            />
-          }
-        />
-      )}
+      <AppBar title="artemys" />
+      {content}
     </SafeAreaView>
   );
 }

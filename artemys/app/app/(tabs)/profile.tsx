@@ -116,8 +116,8 @@ export default function ProfileScreen() {
   const followerCount = profileData?.follower_count ?? 0;
   const followingCount = profileData?.following_count ?? 0;
 
-  const listHeader = useMemo(() => (
-    <>
+  const listHeader = useMemo(
+    () => (
       <ProfileHeader
         profile={profileData}
         name={name}
@@ -138,32 +138,36 @@ export default function ProfileScreen() {
           </>
         )}
       />
-    </>
-  ), [profileData, name, handle, bio, projectCount, followerCount, followingCount, projects.length, router, handleShareProfile]);
+    ),
+    [
+      profileData,
+      name,
+      handle,
+      bio,
+      projectCount,
+      followerCount,
+      followingCount,
+      projects.length,
+      router,
+      handleShareProfile,
+    ],
+  );
 
+  const appBar = (
+    <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+  );
+
+  let content = null;
   if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
-      </SafeAreaView>
+    content = (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
     );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
-        <ErrorState onRetry={fetchData} />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
+  } else if (error) {
+    content = <ErrorState onRetry={fetchData} />;
+  } else {
+    content = (
       <FlatList
         data={projects}
         keyExtractor={(item) => item.id}
@@ -188,6 +192,13 @@ export default function ProfileScreen() {
           />
         }
       />
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {appBar}
+      {content}
     </SafeAreaView>
   );
 }
@@ -227,7 +238,6 @@ const styles = StyleSheet.create({
   gridContainer: {
     paddingBottom: spacing.lg,
   },
-  // Empty state
   emptyContainer: {
     alignItems: 'center',
     paddingTop: spacing.xxl,

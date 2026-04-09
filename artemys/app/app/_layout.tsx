@@ -25,14 +25,13 @@ import { getProfileByHandle } from '@/services/profiles';
 
 export { ErrorBoundary } from 'expo-router';
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
-  // Auth routing
   useEffect(() => {
     if (loading) return;
 
@@ -43,9 +42,8 @@ function RootNavigator() {
     } else if (session && inAuthGroup) {
       router.replace('/');
     }
-  }, [session, loading, segments]);
+  }, [loading, router, segments, session]);
 
-  // Deep link handling for patterns expo-router can't resolve from file structure
   const url = Linking.useURL();
 
   useEffect(() => {
@@ -80,7 +78,6 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="project" />
         <Stack.Screen name="user" />
-        <Stack.Screen name="notifications" />
       </Stack>
     </>
   );
@@ -106,7 +103,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      void SplashScreen.hideAsync();
     }
   }, [loaded]);
 

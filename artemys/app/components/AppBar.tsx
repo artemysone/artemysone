@@ -15,7 +15,7 @@ export function AppBar({ title, rightIcon, onRightPress, badgeCount }: AppBarPro
     <View style={styles.appBar}>
       <Text style={styles.title}>{title}</Text>
       {rightIcon && (
-        <Pressable onPress={onRightPress}>
+        <Pressable onPress={onRightPress} style={styles.rightAction}>
           <View>
             <Ionicons name={rightIcon} size={24} color={colors.text.primary} />
             {badgeCount != null && badgeCount > 0 && <View style={styles.badge} />}
@@ -28,17 +28,23 @@ export function AppBar({ title, rightIcon, onRightPress, badgeCount }: AppBarPro
 
 const styles = StyleSheet.create({
   appBar: {
-    flexDirection: 'row',
+    position: 'relative',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     backgroundColor: colors.bg,
+    minHeight: 56,
   },
   title: {
     fontFamily: fonts.display,
     fontSize: 22,
     color: colors.text.primary,
+    textAlign: 'center',
+  },
+  rightAction: {
+    position: 'absolute',
+    right: spacing.lg,
   },
   badge: {
     position: 'absolute',

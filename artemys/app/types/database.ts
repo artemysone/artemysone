@@ -78,6 +78,7 @@ export interface Notification {
   type: 'like' | 'follow' | 'comment' | 'collaborator';
   project_id: string | null;
   comment_id: string | null;
+  collaborator_status: CollaboratorStatus | null;
   read: boolean;
   created_at: string;
 }
@@ -103,7 +104,6 @@ export interface CommentWithProfile extends Comment {
 export interface NotificationWithActor extends Notification {
   profiles: Profile;
   projects: Pick<Project, 'id' | 'title' | 'thumbnail_url'> | null;
-  collaborator_status?: CollaboratorStatus | null;
 }
 
 export interface CollaboratorWithProfile extends Collaborator {

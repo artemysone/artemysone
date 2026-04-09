@@ -35,7 +35,7 @@ export function NotificationItem({
   const { profiles: actor, projects } = notification;
   const showCollaboratorActions =
     notification.type === 'collaborator' &&
-    (!notification.collaborator_status || notification.collaborator_status === 'pending');
+    notification.collaborator_status === 'pending';
 
   return (
     <Pressable

@@ -6,7 +6,6 @@ export async function addCollaborator(
   projectId: string,
   userId: string,
   role: string,
-  status: CollaboratorStatus = 'pending',
 ) {
   const { data: authUser } = await supabase.auth.getUser();
   const { error } = await supabase
@@ -15,7 +14,7 @@ export async function addCollaborator(
       project_id: projectId,
       user_id: userId,
       role,
-      status,
+      status: 'pending',
       invited_by: authUser.user?.id ?? null,
       responded_at: null,
     });
@@ -35,7 +34,7 @@ export async function removeCollaborator(projectId: string, userId: string) {
 export async function updateCollaboratorStatus(
   projectId: string,
   userId: string,
-  status: CollaboratorStatus,
+  status: Exclude<CollaboratorStatus, 'pending'>,
 ) {
   const { error } = await supabase.rpc('set_collaborator_status', {
     p_project_id: projectId,

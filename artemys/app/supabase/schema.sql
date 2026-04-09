@@ -163,38 +163,70 @@ create trigger on_comments_normalized
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
+  requested_handle text;
+  base_handle text;
+  candidate_handle text;
+  candidate_handles text[];
   profile_handle text;
   profile_name text;
   profile_bio text;
 begin
-  profile_handle := lower(
-    regexp_replace(
-      btrim(coalesce(new.raw_user_meta_data->>'handle', '')),
-      '[^a-z0-9_]',
-      '',
-      'g'
-    )
+  requested_handle := nullif(
+    left(
+      lower(
+        regexp_replace(
+          btrim(coalesce(new.raw_user_meta_data->>'handle', '')),
+          '[^a-z0-9_]',
+          '',
+          'g'
+        )
+      ),
+      30
+    ),
+    ''
   );
-  if profile_handle = '' or char_length(profile_handle) < 3 then
-    profile_handle := 'user_' || left(new.id::text, 8);
-  end if;
-  profile_handle := left(profile_handle, 30);
+  base_handle := left('user_' || left(translate(new.id::text, '-', ''), 8), 30);
+  candidate_handles := array[
+    requested_handle,
+    base_handle,
+    left(base_handle || '_2', 30),
+    left(base_handle || '_3', 30),
+    left(base_handle || '_4', 30),
+    left(base_handle || '_5', 30),
+    left(base_handle || '_6', 30),
+    left(base_handle || '_7', 30),
+    left(base_handle || '_8', 30),
+    left(base_handle || '_9', 30)
+  ];
 
   profile_name := nullif(btrim(coalesce(new.raw_user_meta_data->>'name', '')), '');
   if profile_name is null then
-    profile_name := profile_handle;
+    profile_name := base_handle;
   end if;
 
   profile_bio := coalesce(btrim(new.raw_user_meta_data->>'bio'), '');
 
-  insert into public.profiles (id, name, handle, bio)
-  values (
-    new.id,
-    profile_name,
-    profile_handle,
-    profile_bio
-  );
-  return new;
+  foreach candidate_handle in array candidate_handles loop
+    if candidate_handle is null or char_length(candidate_handle) < 3 then
+      continue;
+    end if;
+
+    insert into public.profiles (id, name, handle, bio)
+    values (
+      new.id,
+      profile_name,
+      candidate_handle,
+      profile_bio
+    )
+    on conflict (handle) do nothing
+    returning handle into profile_handle;
+
+    if found then
+      return new;
+    end if;
+  end loop;
+
+  raise exception 'Could not allocate a unique profile handle';
 end;
 $$ language plpgsql security definer set search_path = public;
 

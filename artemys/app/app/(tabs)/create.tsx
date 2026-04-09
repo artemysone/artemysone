@@ -16,7 +16,13 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { createProject, deleteProject, uploadProjectMedia } from '@/services/projects';
+import {
+  createProject,
+  deleteProject,
+  uploadProjectMedia,
+  cleanupUploadedProjectMedia,
+} from '@/services/projects';
+import type { UploadedProjectMediaAsset } from '@/services/projects';
 import { addProjectMedia } from '@/services/projectMedia';
 import { createCollaboratorNotification } from '@/services/notifications';
 import { searchProfiles } from '@/services/profiles';
@@ -40,7 +46,6 @@ interface MediaItem {
 const MAX_GALLERY_IMAGES = 5;
 const MAX_VIDEO_SECONDS = 10;
 const DEFAULT_PROJECT_FORMAT: ProjectMediaFormat = 'gallery';
-const PENDING_COLLABORATOR_STATUS = 'pending';
 
 const FORMAT_COPY: Record<ProjectMediaFormat, { title: string; subtext: string; helper: string; limit: string }> = {
   video: {
@@ -306,6 +311,7 @@ export default function CreateScreen() {
 
     setSubmitting(true);
     let createdProjectId: string | null = null;
+    const uploadedAssets: UploadedProjectMediaAsset[] = [];
     try {
       const project = await createProject({
         title: title.trim(),
@@ -318,34 +324,41 @@ export default function CreateScreen() {
         collaborators: collaborators.map((c) => ({
           user_id: c.user_id,
           role: c.role,
-          status: PENDING_COLLABORATOR_STATUS,
         })),
       });
       createdProjectId = project.id;
 
       // Upload the first media item to the project row, then mirror the full set into project_media.
       const primary = mediaItems[0];
-      const { mediaUrl, thumbnailUrl } = await uploadProjectMedia(
+      const { mediaUrl, storagePath, thumbnailUrl, thumbnailPath } = await uploadProjectMedia(
         user.id,
         project.id,
         primary.uri,
         primary.type,
         { storageKey: 'primary', updateProject: true },
       );
+      uploadedAssets.push({ mediaUrl, storagePath, thumbnailUrl, thumbnailPath });
 
-      const uploadResults = await Promise.all(
-        mediaItems.slice(1).map((item, i) =>
-          uploadProjectMedia(user.id, project.id, item.uri, item.type, {
-            storageKey: `media-${i + 1}`,
-            updateProject: false,
-          }).then((r) => ({
-            mediaUrl: r.mediaUrl,
-            mediaType: item.type,
-            thumbnailUrl: r.thumbnailUrl,
-            sortOrder: i + 1,
-          })),
-        ),
-      );
+      const uploadResults: Array<{
+        mediaUrl: string;
+        mediaType: 'image' | 'video';
+        thumbnailUrl?: string;
+        sortOrder: number;
+      }> = [];
+      for (const [index, item] of mediaItems.slice(1).entries()) {
+        const result = await uploadProjectMedia(user.id, project.id, item.uri, item.type, {
+          storageKey: `media-${index + 1}`,
+          updateProject: false,
+        });
+
+        uploadedAssets.push(result);
+        uploadResults.push({
+          mediaUrl: result.mediaUrl,
+          mediaType: item.type,
+          thumbnailUrl: result.thumbnailUrl,
+          sortOrder: index + 1,
+        });
+      }
 
       await addProjectMedia(project.id, [
         { mediaUrl, mediaType: primary.type, thumbnailUrl, sortOrder: 0 },
@@ -363,6 +376,7 @@ export default function CreateScreen() {
       resetForm();
       router.navigate('/(tabs)/profile');
     } catch (err: unknown) {
+      await cleanupUploadedProjectMedia(uploadedAssets).catch(() => {});
       if (createdProjectId) {
         try {
           await deleteProject(createdProjectId);

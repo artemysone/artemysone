@@ -5,6 +5,13 @@ import type { CreateProjectInput, Project, ProjectRelationsRow, ProjectWithDetai
 import { getFileExtension, getMediaContentType, readUriAsBlob, extractVideoThumbnailWeb } from '@/utils/media';
 import { normalizeExternalUrl } from '@/utils/validation';
 
+export interface UploadedProjectMediaAsset {
+  mediaUrl: string;
+  storagePath: string;
+  thumbnailUrl?: string;
+  thumbnailPath?: string;
+}
+
 function normalizeTechStack(stack: string[]): string[] {
   return Array.from(
     new Set(
@@ -27,10 +34,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     p_repo_url: input.repo_url ? normalizeExternalUrl(input.repo_url) : null,
     p_tech_stack: normalizeTechStack(input.tech_stack),
     p_tag_ids: input.tag_ids,
-    p_collaborators: input.collaborators.map((collaborator) => ({
-      ...collaborator,
-      status: collaborator.status ?? 'pending',
-    })),
+    p_collaborators: input.collaborators.map(({ user_id, role }) => ({ user_id, role })),
   });
   if (error) throw error;
   if (!project) throw new Error('Project creation returned no data.');
@@ -89,7 +93,7 @@ export async function uploadProjectMedia(
     storageKey?: string;
     updateProject?: boolean;
   },
-): Promise<{ mediaUrl: string; thumbnailUrl?: string }> {
+): Promise<UploadedProjectMediaAsset> {
   const storageKey = options?.storageKey ?? 'primary';
   const updateProject = options?.updateProject ?? true;
   const ext = getFileExtension(uri, mediaType === 'video' ? 'mp4' : 'jpg');
@@ -150,10 +154,27 @@ export async function uploadProjectMedia(
     }
   }
 
-  return { mediaUrl: publicUrl, thumbnailUrl };
+  return {
+    mediaUrl: publicUrl,
+    storagePath: path,
+    thumbnailUrl,
+    thumbnailPath: thumbnailUrl ? thumbPath : undefined,
+  };
 }
 
 export async function deleteProject(projectId: string) {
   const { error } = await supabase.from('projects').delete().eq('id', projectId);
   if (error) throw error;
+}
+
+export async function cleanupUploadedProjectMedia(
+  assets: UploadedProjectMediaAsset[],
+): Promise<void> {
+  const paths = assets.flatMap((asset) =>
+    [asset.storagePath, asset.thumbnailPath].filter((path): path is string => !!path),
+  );
+
+  if (paths.length === 0) return;
+
+  await supabase.storage.from('project-media').remove([...new Set(paths)]);
 }

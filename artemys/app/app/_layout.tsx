@@ -76,8 +76,8 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="project" />
-        <Stack.Screen name="user" />
+        <Stack.Screen name="project/[id]" />
+        <Stack.Screen name="user/[id]" />
       </Stack>
     </>
   );

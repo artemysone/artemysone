@@ -16,7 +16,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProfile } from '@/services/profiles';
 import { getUserProjects } from '@/services/projects';
-import { AppBar } from '@/components/AppBar';
 import { ProjectThumb, THUMB_GAP, thumbStyles } from '@/components/ProjectThumb';
 import { ErrorState } from '@/components/ErrorState';
 import { ProfileHeader } from '@/components/ProfileHeader';
@@ -153,10 +152,6 @@ export default function ProfileScreen() {
     ],
   );
 
-  const appBar = (
-    <AppBar title="artemys" rightIcon="settings-outline" onRightPress={handleSignOut} />
-  );
-
   let content = null;
   if (loading) {
     content = (
@@ -197,7 +192,14 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {appBar}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {profileData?.handle || 'profile'}
+        </Text>
+        <Pressable style={styles.headerAction} onPress={handleSignOut}>
+          <Ionicons name="settings-outline" size={22} color={colors.text.primary} />
+        </Pressable>
+      </View>
       {content}
     </SafeAreaView>
   );
@@ -212,6 +214,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  headerTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  headerAction: {
+    position: 'absolute',
+    right: spacing.md,
+    padding: 4,
   },
   editBtn: {
     flex: 1,

@@ -221,6 +221,7 @@ export default function FeedScreen() {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.5}
         refreshControl={
@@ -254,6 +255,10 @@ const styles = StyleSheet.create({
   footer: {
     paddingVertical: spacing.lg,
     alignItems: 'center',
+  },
+  listContent: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
   },
   empty: {
     paddingTop: 80,

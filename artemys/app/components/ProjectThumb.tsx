@@ -20,7 +20,10 @@ export function ProjectThumb({
         fallback="gradient"
         aspectRatio={1}
         playButtonSize={28}
-        borderRadius={12}
+        borderRadius={0}
+        showFormatBadge={false}
+        showMediaCountBadge={false}
+        showPlayOverlay={false}
       />
     </Pressable>
   );
@@ -37,7 +40,6 @@ const styles = StyleSheet.create({
   thumb: {
     flex: 1,
     aspectRatio: 1,
-    borderRadius: 12,
     overflow: 'hidden',
   },
 });

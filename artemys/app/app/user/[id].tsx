@@ -158,7 +158,9 @@ export default function UserProfileScreen() {
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
           </Pressable>
-          <Text style={styles.headerTitle} numberOfLines={1}>Profile</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {profileData?.handle || name}
+          </Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.loadingContainer}>
@@ -175,7 +177,9 @@ export default function UserProfileScreen() {
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
           </Pressable>
-          <Text style={styles.headerTitle} numberOfLines={1}>Profile</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {profileData?.handle || name}
+          </Text>
           <View style={styles.headerRight} />
         </View>
         <ErrorState onRetry={fetchData} />
@@ -189,7 +193,9 @@ export default function UserProfileScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{name}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {profileData?.handle || name}
+        </Text>
         <View style={styles.headerRight} />
       </View>
       <FlatList
@@ -242,8 +248,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontFamily: fonts.display,
-    fontSize: 17,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 16,
     color: colors.text.primary,
     textAlign: 'center',
     marginHorizontal: spacing.sm,

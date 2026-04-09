@@ -93,6 +93,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -2,
+    marginTop: 6,
   },
 });

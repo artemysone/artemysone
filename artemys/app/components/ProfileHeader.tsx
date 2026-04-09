@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
@@ -16,7 +15,6 @@ type ProfileHeaderProps = {
   followerCount: number;
   followingCount: number;
   actions?: ReactNode;
-  showProjectsHeader?: boolean;
 };
 
 export function ProfileHeader({
@@ -28,52 +26,46 @@ export function ProfileHeader({
   followerCount,
   followingCount,
   actions,
-  showProjectsHeader = true,
 }: ProfileHeaderProps) {
   return (
     <>
-      <View style={styles.profileHeader}>
+      <View style={styles.container}>
+        {/* Avatar + Stats row */}
         <View style={styles.topRow}>
           <Avatar uri={profile?.avatar_url} name={name} size="lg" showRing />
           <View style={styles.statsRow}>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{formatCount(projectCount)}</Text>
-              <Text style={styles.statLabel}>Projects</Text>
+              <Text style={styles.statLabel}>projects</Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{formatCount(followerCount)}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
+              <Text style={styles.statLabel}>followers</Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statNum}>{formatCount(followingCount)}</Text>
-              <Text style={styles.statLabel}>Following</Text>
+              <Text style={styles.statLabel}>following</Text>
             </View>
           </View>
         </View>
-        <Text style={styles.profileName}>{name}</Text>
-        {handle ? <Text style={styles.profileHandle}>{handle}</Text> : null}
-        {bio ? <Text style={styles.profileBio}>{bio}</Text> : null}
+
+        {/* Name + Bio */}
+        <Text style={styles.name}>{name}</Text>
+        {bio ? <Text style={styles.bio}>{bio}</Text> : null}
       </View>
 
-      {actions ? <View style={styles.profileActions}>{actions}</View> : null}
+      {/* Action buttons */}
+      {actions ? <View style={styles.actions}>{actions}</View> : null}
 
-      {showProjectsHeader && projectCount > 0 ? (
-        <View style={styles.gridHeader} accessibilityRole="tablist">
-          <View style={styles.gridTab}>
-            <Ionicons name="grid-outline" size={18} color={colors.text.primary} />
-          </View>
-        </View>
-      ) : null}
+      <View style={styles.divider} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  profileHeader: {
+  container: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    marginHorizontal: spacing.md,
   },
   topRow: {
     flexDirection: 'row',
@@ -83,59 +75,46 @@ const styles = StyleSheet.create({
   statsRow: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  profileName: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 15,
-    color: colors.text.primary,
-    marginTop: spacing.md,
-  },
-  profileHandle: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.secondary,
-    marginTop: 3,
-  },
-  profileBio: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.primary,
-    textAlign: 'left',
-    lineHeight: 21,
-    marginTop: 10,
+    justifyContent: 'space-around',
   },
   stat: {
     alignItems: 'center',
   },
   statNum: {
-    fontFamily: fonts.display,
-    fontSize: 18,
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 17,
     color: colors.text.primary,
   },
   statLabel: {
     fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.text.secondary,
+    fontSize: 13,
+    color: colors.text.primary,
     marginTop: 2,
   },
-  profileActions: {
+  name: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.text.primary,
+    marginTop: spacing.md,
+  },
+  bio: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.primary,
+    lineHeight: 19,
+    marginTop: 4,
+  },
+  actions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
   },
-  gridHeader: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.borderLight,
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
     marginTop: spacing.sm,
-    marginBottom: 2,
-    paddingVertical: 10,
-  },
-  gridTab: {
-    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
   },
 });

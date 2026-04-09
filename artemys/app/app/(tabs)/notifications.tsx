@@ -11,10 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { AppBar } from '@/components/AppBar';
 import {
   getNotifications,
   markAsRead,
-  markAllAsRead,
 } from '@/services/notifications';
 import { updateCollaboratorStatus } from '@/services/collaborators';
 import { NotificationItem } from '@/components/NotificationItem';
@@ -82,16 +82,6 @@ export default function NotificationsScreen() {
     setLoadingMore(false);
   }, [hasMore, loadingMore, page, load]);
 
-  const handleMarkAllRead = useCallback(async () => {
-    if (!user) return;
-    try {
-      await markAllAsRead(user.id);
-      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-    } catch (err) {
-      console.error('Failed to mark all as read:', err);
-    }
-  }, [user]);
-
   const handlePress = useCallback(
     async (notification: NotificationWithActor) => {
       if (!notification.read) {
@@ -100,7 +90,7 @@ export default function NotificationsScreen() {
       }
 
       if (notification.type === 'follow') {
-        router.push({ pathname: '/user/[id]', params: { id: notification.actor_id } });
+        router.push({ pathname: '/[handle]', params: { handle: notification.profiles.handle } });
       } else if (notification.project_id) {
         router.push({ pathname: '/project/[id]', params: { id: notification.project_id } });
       }
@@ -164,12 +154,7 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        <Pressable onPress={handleMarkAllRead}>
-          <Text style={styles.markAllRead}>Mark all read</Text>
-        </Pressable>
-      </View>
+      <AppBar title="artemys" />
 
       {loading ? (
         <View style={styles.loading}>
@@ -202,23 +187,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  headerTitle: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.text.primary,
-  },
-  markAllRead: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
-    color: colors.accent,
   },
   loading: {
     flex: 1,

@@ -47,7 +47,7 @@ function PlayOverlay({ size, onPress }: { size: number; onPress?: () => void }) 
   );
 
   return (
-    <View style={styles.playOverlay}>
+    <View style={styles.playOverlay} pointerEvents="box-none">
       {onPress ? (
         <Pressable
           onPress={(event) => {

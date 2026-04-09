@@ -124,7 +124,7 @@ export default function ExploreScreen() {
     ({ item }: { item: Profile }) => (
       <Pressable
         style={styles.profileItem}
-        onPress={() => router.push(`/user/${item.id}`)}
+        onPress={() => router.push({ pathname: '/[handle]', params: { handle: item.handle } })}
       >
         <Avatar uri={item.avatar_url} name={item.name} size="sm" />
         <View style={styles.profileItemInfo}>
@@ -239,7 +239,7 @@ export default function ExploreScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppBar title="Explore" />
+      <AppBar title="artemys" />
 
       {/* Search bar */}
       <View style={styles.searchBarContainer}>

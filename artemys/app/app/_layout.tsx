@@ -21,7 +21,6 @@ import {
   SourceSerif4_700Bold,
 } from '@expo-google-fonts/source-serif-4';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { getProfileByHandle } from '@/services/profiles';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -56,12 +55,9 @@ function RootNavigator() {
       const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
       const handleMatch = normalizedPath.match(/^@(.+)$/);
       if (handleMatch) {
-        getProfileByHandle(handleMatch[1])
-          .then((profile) => {
-            if (!active || !profile) return;
-            router.push({ pathname: '/user/[id]', params: { id: profile.id } });
-          })
-          .catch(() => {});
+        if (active) {
+            router.push({ pathname: '/[handle]', params: { handle: handleMatch[1] } });
+          }
       }
     }
 
@@ -76,7 +72,6 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="user/[id]" />
       </Stack>
     </>
   );

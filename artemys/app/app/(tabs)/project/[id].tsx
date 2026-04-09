@@ -347,7 +347,7 @@ export default function ProjectDetailScreen() {
           {/* Author */}
           <Pressable
             style={styles.authorSection}
-            onPress={() => router.push(`/user/${author.id}`)}
+            onPress={() => router.push({ pathname: '/[handle]', params: { handle: author.handle } })}
           >
             <Avatar uri={author.avatar_url} name={author.name} size="md" showRing />
             <View style={styles.authorInfo}>
@@ -375,7 +375,7 @@ export default function ProjectDetailScreen() {
                   <Pressable
                     key={`${c.project_id}-${c.user_id}`}
                     style={styles.collabItem}
-                    onPress={() => router.push(`/user/${c.user_id}`)}
+                    onPress={() => router.push({ pathname: '/[handle]', params: { handle: c.profiles.handle } })}
                   >
                     <Avatar uri={c.profiles.avatar_url} name={c.profiles.name} size="sm" />
                     <View style={styles.collabInfo}>
@@ -407,7 +407,7 @@ export default function ProjectDetailScreen() {
 
             {comments.map((comment) => (
               <View key={comment.id} style={styles.commentItem}>
-                <Pressable onPress={() => router.push(`/user/${comment.user_id}`)}>
+                <Pressable onPress={() => router.push({ pathname: '/[handle]', params: { handle: comment.profiles.handle } })}>
                   <Avatar
                     uri={comment.profiles.avatar_url}
                     name={comment.profiles.name}

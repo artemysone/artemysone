@@ -5,22 +5,33 @@ import { fonts } from '@/constants/Typography';
 
 interface AppBarProps {
   title: string;
+  leftIcon?: keyof typeof Ionicons.glyphMap;
+  onLeftPress?: () => void;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightPress?: () => void;
   badgeCount?: number;
 }
 
-export function AppBar({ title, rightIcon, onRightPress, badgeCount }: AppBarProps) {
+export function AppBar({ title, leftIcon, onLeftPress, rightIcon, onRightPress, badgeCount }: AppBarProps) {
   return (
     <View style={styles.appBar}>
+      {leftIcon ? (
+        <Pressable onPress={onLeftPress} style={styles.leftAction}>
+          <Ionicons name={leftIcon} size={24} color={colors.text.primary} />
+        </Pressable>
+      ) : (
+        <View style={styles.leftAction} />
+      )}
       <Text style={styles.title}>{title}</Text>
-      {rightIcon && (
+      {rightIcon ? (
         <Pressable onPress={onRightPress} style={styles.rightAction}>
           <View>
             <Ionicons name={rightIcon} size={24} color={colors.text.primary} />
             {badgeCount != null && badgeCount > 0 && <View style={styles.badge} />}
           </View>
         </Pressable>
+      ) : (
+        <View style={styles.rightAction} />
       )}
     </View>
   );
@@ -28,23 +39,28 @@ export function AppBar({ title, rightIcon, onRightPress, badgeCount }: AppBarPro
 
 const styles = StyleSheet.create({
   appBar: {
-    position: 'relative',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     backgroundColor: colors.bg,
     minHeight: 56,
   },
+  leftAction: {
+    width: 32,
+    alignItems: 'flex-start',
+  },
   title: {
+    flex: 1,
     fontFamily: fonts.display,
     fontSize: 22,
     color: colors.text.primary,
     textAlign: 'center',
   },
   rightAction: {
-    position: 'absolute',
-    right: spacing.lg,
+    width: 32,
+    alignItems: 'flex-end',
   },
   badge: {
     position: 'absolute',

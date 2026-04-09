@@ -43,6 +43,27 @@ export async function getProfileByHandle(handle: string): Promise<Profile | null
   return data as Profile | null;
 }
 
+export async function getProfileByHandleWithStats(handle: string): Promise<ProfileWithStats | null> {
+  const profile = await getProfileByHandle(handle);
+  if (!profile) return null;
+
+  const [projects, followers, following] = await Promise.all([
+    supabase.from('projects').select('id', { count: 'exact', head: true }).eq('user_id', profile.id),
+    supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('following_id', profile.id),
+    supabase.from('follows').select('following_id', { count: 'exact', head: true }).eq('follower_id', profile.id),
+  ]);
+  if (projects.error) throw projects.error;
+  if (followers.error) throw followers.error;
+  if (following.error) throw following.error;
+
+  return {
+    ...profile,
+    project_count: projects.count ?? 0,
+    follower_count: followers.count ?? 0,
+    following_count: following.count ?? 0,
+  };
+}
+
 export async function updateProfile(userId: string, updates: UpdateProfileInput) {
   const normalizedUpdates: UpdateProfileInput = {
     ...updates,

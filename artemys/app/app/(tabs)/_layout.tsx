@@ -1,9 +1,12 @@
 import { Tabs } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { Avatar } from '@/components/Avatar';
 import { colors } from '@/constants/Colors';
 
 export default function TabLayout() {
+  const { profile } = useAuth();
   return (
     <Tabs
       screenOptions={{
@@ -56,8 +59,14 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? styles.avatarRing : undefined}>
+              <Avatar
+                uri={profile?.avatar_url}
+                name={profile?.name ?? '?'}
+                containerSize={32}
+              />
+            </View>
           ),
         }}
       />
@@ -69,6 +78,12 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="project/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="[handle]"
         options={{
           href: null,
         }}
@@ -85,6 +100,12 @@ const styles = StyleSheet.create({
     height: 80,
     paddingTop: 8,
     paddingBottom: 12,
+  },
+  avatarRing: {
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    borderRadius: 99,
+    padding: 1.5,
   },
   createButton: {
     width: 40,

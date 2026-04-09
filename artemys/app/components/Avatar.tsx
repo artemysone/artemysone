@@ -17,6 +17,7 @@ interface AvatarProps {
   uri?: string | null;
   name: string;
   size?: keyof typeof SIZES;
+  containerSize?: number;
   gradient?: readonly [string, string] | [string, string];
   showRing?: boolean;
 }
@@ -30,8 +31,10 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function Avatar({ uri, name, size = 'md', gradient, showRing }: AvatarProps) {
-  const { container, font } = SIZES[size];
+export function Avatar({ uri, name, size = 'md', containerSize, gradient, showRing }: AvatarProps) {
+  const defaults = SIZES[size];
+  const container = containerSize ?? defaults.container;
+  const font = containerSize ? Math.round(containerSize * 0.36) : defaults.font;
   const borderRadius = container / 2;
   const grad = (gradient as [string, string]) ?? DEFAULT_GRADIENT;
 

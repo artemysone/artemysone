@@ -410,7 +410,7 @@ export default function CreateScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppBar title="New Project" />
+      <AppBar title="artemys" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

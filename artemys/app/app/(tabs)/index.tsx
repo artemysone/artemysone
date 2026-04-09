@@ -177,7 +177,7 @@ export default function FeedScreen() {
         onFollow={() => handleFollow(item.profiles.id)}
         onShare={() => handleShare(item)}
         onPress={() => router.push({ pathname: '/project/[id]', params: { id: item.id } })}
-        onAuthorPress={() => router.push({ pathname: '/user/[id]', params: { id: item.profiles.id } })}
+        onAuthorPress={() => router.push({ pathname: '/[handle]', params: { handle: item.profiles.handle } })}
       />
     ),
     [handleLike, handleFollow, handleShare, router, user?.id],

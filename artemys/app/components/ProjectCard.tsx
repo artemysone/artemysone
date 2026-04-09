@@ -1,10 +1,9 @@
 import { memo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from './Avatar';
 import { ProjectMediaPreview } from './ProjectMediaPreview';
-import { colors, spacing, radius } from '@/constants/Colors';
+import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { formatCount, timeSince } from '@/utils/format';
 import type { ProjectWithDetails } from '@/types/database';
@@ -32,12 +31,35 @@ export const ProjectCard = memo(function ProjectCard({
 }: ProjectCardProps) {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const { profiles: author } = project;
-  const fullCaption = [project.title, project.description].filter(Boolean).join(' · ');
-  const captionPreview = fullCaption.slice(0, 110).trim();
-  const hasLongCaption = fullCaption.length > captionPreview.length;
+  const hasDescription = !!project.description;
+  const fullText = hasDescription ? `${project.title} · ${project.description}` : project.title;
+  const captionPreview = fullText.slice(0, 110).trim();
+  const hasLongCaption = fullText.length > captionPreview.length;
 
   return (
     <View style={styles.card}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable style={styles.authorTap} onPress={onAuthorPress}>
+          <Avatar uri={author.avatar_url} name={author.name} size="sm" />
+          <View style={styles.headerInfo}>
+            <Text style={styles.authorNameRow}>
+              <Text style={styles.authorName}>{author.name}</Text>
+              <Text style={styles.authorHandle}> @{author.handle}</Text>
+            </Text>
+            <Text style={styles.headerMeta}>{timeSince(project.created_at)}</Text>
+          </View>
+        </Pressable>
+        {!isOwnProject && (
+          <Pressable onPress={onFollow}>
+            <Text style={[styles.followText, isFollowing && styles.followTextActive]}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Media */}
       <ProjectMediaPreview
         project={project}
         fallback="icon"
@@ -48,79 +70,56 @@ export const ProjectCard = memo(function ProjectCard({
         isInlineVideoActive={project.media_type === 'video' && isVideoPlaying}
         onPlayPress={() => setIsVideoPlaying(true)}
         onPress={onPress}
-        overlay={
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.82)']}
-            locations={[0.45, 0.68, 1]}
-            style={styles.mediaOverlay}
-          >
-            <View style={styles.overlayRow}>
-              <Pressable style={styles.authorTap} onPress={onAuthorPress}>
-                <Avatar uri={author.avatar_url} name={author.name} size="md" />
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{author.name}</Text>
-                  <Text style={styles.meta}>@{author.handle} · {timeSince(project.created_at)}</Text>
-                </View>
-              </Pressable>
-              {!isOwnProject ? (
-                <Pressable style={[styles.followBtn, isFollowing && styles.followBtnActive]} onPress={onFollow}>
-                  <Text style={[styles.followBtnText, isFollowing && styles.followBtnTextActive]}>
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
-          </LinearGradient>
-        }
       />
 
+      {/* Actions */}
       <View style={styles.actions}>
-        <Pressable style={styles.actionBtn} onPress={onLike}>
-          <Ionicons
-            name={project.user_has_liked ? 'heart' : 'heart-outline'}
-            size={22}
-            color={project.user_has_liked ? '#E25555' : colors.text.primary}
-          />
-          {project.like_count > 0 ? <Text style={styles.actionText}>{formatCount(project.like_count)}</Text> : null}
-        </Pressable>
+        <View style={styles.actionsLeft}>
+          <Pressable style={styles.actionBtn} onPress={onLike}>
+            <Ionicons
+              name={project.user_has_liked ? 'heart' : 'heart-outline'}
+              size={24}
+              color={project.user_has_liked ? '#E25555' : colors.text.primary}
+            />
+            {project.like_count > 0 && <Text style={styles.actionCount}>{formatCount(project.like_count)}</Text>}
+          </Pressable>
+          <Pressable style={styles.actionBtn} onPress={onPress}>
+            <Ionicons name="chatbubble-outline" size={22} color={colors.text.primary} />
+            {project.comment_count > 0 && <Text style={styles.actionCount}>{formatCount(project.comment_count)}</Text>}
+          </Pressable>
+        </View>
         <Pressable style={styles.actionBtn}>
-          <Ionicons name="chatbubble-outline" size={20} color={colors.text.primary} />
-          {project.comment_count > 0 ? <Text style={styles.actionText}>{formatCount(project.comment_count)}</Text> : null}
-        </Pressable>
-        <Pressable style={styles.actionBtn} onPress={onShare}>
-          <Ionicons name="share-outline" size={22} color={colors.text.primary} />
+          <Ionicons name="bookmark-outline" size={22} color={colors.text.primary} />
         </Pressable>
       </View>
 
-      <View style={styles.body}>
+
+      {/* Caption */}
+      <View style={styles.captionWrap}>
         <Text style={styles.caption} numberOfLines={2}>
-          <Text style={styles.captionAuthor}>{author.name}</Text>
-          <Text>{' '}{hasLongCaption ? `${captionPreview}...` : fullCaption}</Text>
+          <Text style={styles.captionTitle}>{project.title}</Text>
+          {hasDescription ? ` · ${project.description}` : ''}
         </Text>
-        {hasLongCaption ? (
-          <Pressable style={styles.moreBtn} onPress={onPress}>
-            <Text style={styles.moreText}>... more</Text>
+        {hasLongCaption && (
+          <Pressable onPress={onPress}>
+            <Text style={styles.moreText}>more</Text>
           </Pressable>
-        ) : null}
+        )}
       </View>
+
     </View>
   );
 });
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.sm,
   },
-  mediaOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  overlayRow: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   authorTap: {
     flexDirection: 'row',
@@ -128,75 +127,74 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 10,
   },
-  userInfo: {
+  headerInfo: {
     flex: 1,
   },
-  userName: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: '#fff',
-  },
-  meta: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.82)',
-    marginTop: 1,
-  },
-  followBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radius.full,
-    backgroundColor: '#fff',
-  },
-  followBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  followBtnText: {
-    fontFamily: fonts.bodySemiBold,
+  authorNameRow: {
     fontSize: 13,
+  },
+  authorName: {
+    fontFamily: fonts.bodySemiBold,
     color: colors.text.primary,
   },
-  followBtnTextActive: {
-    color: '#fff',
+  authorHandle: {
+    fontFamily: fonts.body,
+    color: colors.text.secondary,
+  },
+  headerMeta: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: 1,
+  },
+  followText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 13,
+    color: colors.accent,
+  },
+  followTextActive: {
+    color: colors.text.secondary,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingTop: 12,
-    gap: 18,
+    paddingTop: 10,
+  },
+  actionsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+    padding: 2,
   },
-  actionText: {
+  actionCount: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text.primary,
   },
-  body: {
-    paddingHorizontal: 12,
-    paddingTop: 6,
+  captionWrap: {
+    paddingHorizontal: 14,
+    marginTop: 4,
   },
   caption: {
     fontFamily: fonts.body,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.text.primary,
-    lineHeight: 20,
+    lineHeight: 18,
   },
-  captionAuthor: {
+  captionTitle: {
     fontFamily: fonts.bodySemiBold,
   },
-  moreBtn: {
-    marginTop: 4,
-  },
   moreText: {
-    fontFamily: fonts.bodyMedium,
+    fontFamily: fonts.body,
     fontSize: 13,
     color: colors.text.secondary,
+    marginTop: 2,
   },
 });

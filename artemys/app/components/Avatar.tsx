@@ -5,6 +5,7 @@ import { colors } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 
 const SIZES = {
+  xs: { container: 22, font: 8 },
   sm: { container: 28, font: 10 },
   md: { container: 36, font: 13 },
   lg: { container: 80, font: 28 },

@@ -8,7 +8,7 @@ const PROJECT_SELECT = `
   *,
   profiles!projects_user_id_fkey(*),
   project_tags(tags(*)),
-  collaborators(*, profiles(*)),
+  collaborators(*, profiles!collaborators_user_id_fkey(*)),
   project_media(id)
 `;
 

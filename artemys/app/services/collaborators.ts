@@ -47,7 +47,7 @@ export async function updateCollaboratorStatus(
 export async function getProjectCollaborators(projectId: string): Promise<CollaboratorWithProfile[]> {
   const { data, error } = await supabase
     .from('collaborators')
-    .select('*, profiles(*)')
+    .select('*, profiles!collaborators_user_id_fkey(*)')
     .eq('project_id', projectId);
   if (error) throw error;
   return (data ?? []) as CollaboratorWithProfile[];

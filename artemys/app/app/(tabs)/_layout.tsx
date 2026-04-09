@@ -2,7 +2,6 @@ import { Tabs } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/Colors';
-import { fonts } from '@/constants/Typography';
 
 export default function TabLayout() {
   return (
@@ -12,7 +11,7 @@ export default function TabLayout() {
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.text.tertiary,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarShowLabel: false,
       }}
     >
       <Tabs.Screen
@@ -36,7 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="create"
         options={{
-          title: '',
+          title: 'Create',
           tabBarIcon: () => (
             <View style={styles.createButton}>
               <Ionicons name="add" size={24} color="#fff" />
@@ -68,6 +67,12 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="project/[id]"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
@@ -80,11 +85,6 @@ const styles = StyleSheet.create({
     height: 80,
     paddingTop: 8,
     paddingBottom: 12,
-  },
-  tabLabel: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-    letterSpacing: 0.3,
   },
   createButton: {
     width: 40,

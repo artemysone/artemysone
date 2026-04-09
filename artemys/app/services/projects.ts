@@ -48,7 +48,7 @@ export async function getProject(projectId: string, currentUserId?: string): Pro
       *,
       profiles!projects_user_id_fkey(*),
       project_tags(tags(*)),
-      collaborators(*, profiles(*))
+      collaborators(*, profiles!collaborators_user_id_fkey(*))
     `)
     .eq('id', projectId)
     .maybeSingle();

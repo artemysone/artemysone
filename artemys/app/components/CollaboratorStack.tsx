@@ -6,6 +6,7 @@ import { fonts } from '@/constants/Typography';
 interface StackItem {
   name: string;
   avatar_url?: string | null;
+  status?: string;
 }
 
 interface CollaboratorStackProps {
@@ -16,6 +17,8 @@ interface CollaboratorStackProps {
 export function CollaboratorStack({ collaborators, max = 4 }: CollaboratorStackProps) {
   const visible = collaborators.slice(0, max);
   const overflow = collaborators.length - max;
+  const pendingCount = collaborators.filter((c) => c.status === 'pending').length;
+  const acceptedCount = collaborators.filter((c) => !c.status || c.status === 'accepted').length;
 
   return (
     <View style={styles.row}>
@@ -31,7 +34,11 @@ export function CollaboratorStack({ collaborators, max = 4 }: CollaboratorStackP
           </View>
         )}
       </View>
-      <Text style={styles.label}>{collaborators.length} collaborator{collaborators.length !== 1 ? 's' : ''}</Text>
+      <Text style={styles.label}>
+        {collaborators.length} collaborator{collaborators.length !== 1 ? 's' : ''}
+        {pendingCount > 0 ? ` · ${pendingCount} pending` : ''}
+        {pendingCount === 0 && acceptedCount !== collaborators.length ? ` · ${acceptedCount} confirmed` : ''}
+      </Text>
     </View>
   );
 }

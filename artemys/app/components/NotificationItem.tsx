@@ -9,6 +9,8 @@ import type { NotificationWithActor } from '@/types/database';
 interface NotificationItemProps {
   notification: NotificationWithActor;
   onPress: () => void;
+  onAcceptCollaborator?: () => void;
+  onRejectCollaborator?: () => void;
 }
 
 function getAction(type: NotificationWithActor['type']): string {
@@ -24,8 +26,16 @@ function getAction(type: NotificationWithActor['type']): string {
   }
 }
 
-export function NotificationItem({ notification, onPress }: NotificationItemProps) {
+export function NotificationItem({
+  notification,
+  onPress,
+  onAcceptCollaborator,
+  onRejectCollaborator,
+}: NotificationItemProps) {
   const { profiles: actor, projects } = notification;
+  const showCollaboratorActions =
+    notification.type === 'collaborator' &&
+    (!notification.collaborator_status || notification.collaborator_status === 'pending');
 
   return (
     <Pressable
@@ -43,6 +53,28 @@ export function NotificationItem({ notification, onPress }: NotificationItemProp
           {getAction(notification.type)}
         </Text>
         <Text style={styles.time}>{timeSince(notification.created_at)}</Text>
+        {showCollaboratorActions && onAcceptCollaborator && onRejectCollaborator ? (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={styles.rejectButton}
+              onPress={(event) => {
+                event.stopPropagation();
+                onRejectCollaborator();
+              }}
+            >
+              <Text style={styles.rejectButtonText}>Decline</Text>
+            </Pressable>
+            <Pressable
+              style={styles.acceptButton}
+              onPress={(event) => {
+                event.stopPropagation();
+                onAcceptCollaborator();
+              }}
+            >
+              <Text style={styles.acceptButtonText}>Confirm</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
       {projects?.thumbnail_url && (
         <Image
@@ -82,6 +114,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.secondary,
     marginTop: 2,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  rejectButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    backgroundColor: colors.input,
+  },
+  rejectButtonText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  acceptButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    backgroundColor: colors.accent,
+  },
+  acceptButtonText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: '#fff',
   },
   thumbnail: {
     width: 40,

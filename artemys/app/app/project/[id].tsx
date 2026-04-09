@@ -31,6 +31,11 @@ import { shareProject } from '@/utils/share';
 import { isValidExternalUrl } from '@/utils/validation';
 import type { ProjectWithDetails, ProjectMedia, CommentWithProfile } from '@/types/database';
 
+type RichProject = ProjectWithDetails & {
+  tech_stack?: string[] | null;
+  collaborators?: Array<ProjectWithDetails['collaborators'][number] & { status?: string }>;
+};
+
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -164,8 +169,14 @@ export default function ProjectDetailScreen() {
 
   // ---------- Derived ----------
 
+  const richProject = project as RichProject | null;
   const tags = project?.project_tags?.map((pt) => pt.tags) ?? [];
-  const collabs = project?.collaborators ?? [];
+  const collabs = richProject?.collaborators?.filter((c) => c.status !== 'rejected') ?? [];
+  const techStack = (richProject?.tech_stack ?? []).map((item) => item.trim()).filter(Boolean);
+  const pendingCollaborators = collabs.filter((c) => c.status === 'pending').length;
+  const collaboratorCount = collabs.length;
+  const mediaCount = mediaItems.length || (project?.project_media?.length ?? 0) || (project?.media_url ? 1 : 0);
+  const formatLabel = project?.media_type === 'video' ? 'Video' : mediaCount > 1 ? 'Gallery' : 'Image';
   const author = project?.profiles;
   const isOwnProject = user?.id === project?.user_id;
 
@@ -233,6 +244,37 @@ export default function ProjectDetailScreen() {
             fallbackProject={project}
           />
 
+          <View style={styles.signalRow}>
+            <View style={styles.signalChip}>
+              <Ionicons
+                name={project.media_type === 'video' ? 'play' : 'images'}
+                size={12}
+                color={colors.accent}
+              />
+              <Text style={styles.signalText}>{formatLabel}</Text>
+            </View>
+            {mediaCount > 1 && (
+              <View style={styles.signalChip}>
+                <Ionicons name="layers-outline" size={12} color={colors.accent} />
+                <Text style={styles.signalText}>{mediaCount} frames</Text>
+              </View>
+            )}
+            {collaboratorCount > 0 && (
+              <View style={styles.signalChip}>
+                <Ionicons name="people-outline" size={12} color={colors.accent} />
+                <Text style={styles.signalText}>
+                  {collaboratorCount} collaborator{collaboratorCount === 1 ? '' : 's'}
+                </Text>
+              </View>
+            )}
+            {pendingCollaborators > 0 && (
+              <View style={[styles.signalChip, styles.pendingChip]}>
+                <Ionicons name="time-outline" size={12} color={colors.text.secondary} />
+                <Text style={styles.pendingText}>{pendingCollaborators} pending</Text>
+              </View>
+            )}
+          </View>
+
           {/* Actions */}
           <View style={styles.actions}>
             <Pressable style={styles.actionBtn} onPress={handleLike}>
@@ -257,6 +299,17 @@ export default function ProjectDetailScreen() {
             <Text style={styles.title}>{project.title}</Text>
             <Text style={styles.description}>{project.description}</Text>
           </View>
+
+          {techStack.length > 0 && (
+            <View style={styles.stackSection}>
+              <Text style={styles.sectionLabel}>Tech Stack</Text>
+              <View style={styles.stackRow}>
+                {techStack.map((item) => (
+                  <TagChip key={item} label={item} />
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Links */}
           {(project.demo_url || project.repo_url) && (
@@ -327,7 +380,14 @@ export default function ProjectDetailScreen() {
                     <Avatar uri={c.profiles.avatar_url} name={c.profiles.name} size="sm" />
                     <View style={styles.collabInfo}>
                       <Text style={styles.collabName}>{c.profiles.name}</Text>
-                      <Text style={styles.collabRole}>{c.role}</Text>
+                      <View style={styles.collabMetaRow}>
+                        {c.role ? <Text style={styles.collabRole}>{c.role}</Text> : null}
+                        <View style={[styles.collabStatusChip, c.status === 'pending' && styles.collabStatusPending]}>
+                          <Text style={[styles.collabStatusText, c.status === 'pending' && styles.collabStatusPendingText]}>
+                            {c.status === 'pending' ? 'Pending' : 'Confirmed'}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                   </Pressable>
                 ))}
@@ -471,6 +531,40 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text.primary,
   },
+  signalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: spacing.md,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  signalChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    backgroundColor: colors.accentSoft,
+  },
+  signalText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  pendingChip: {
+    backgroundColor: colors.input,
+  },
+  pendingText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
 
   // Body
   body: {
@@ -488,6 +582,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text.secondary,
     lineHeight: 21,
+  },
+  stackSection: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  sectionLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 12,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
+  },
+  stackRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
   },
 
   // Links
@@ -597,9 +708,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text.primary,
   },
+  collabMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
   collabRole: {
     fontFamily: fonts.body,
     fontSize: 12,
+    color: colors.text.secondary,
+  },
+  collabStatusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: colors.accentSoft,
+  },
+  collabStatusPending: {
+    backgroundColor: colors.input,
+  },
+  collabStatusText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    color: colors.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  collabStatusPendingText: {
     color: colors.text.secondary,
   },
 

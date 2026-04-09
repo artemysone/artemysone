@@ -17,6 +17,7 @@ import {
   markAsRead,
   markAllAsRead,
 } from '@/services/notifications';
+import { updateCollaboratorStatus } from '@/services/collaborators';
 import { NotificationItem } from '@/components/NotificationItem';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
@@ -33,6 +34,15 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+
+  const patchNotification = useCallback(
+    (notificationId: string, patch: Partial<NotificationWithActor>) => {
+      setItems((prev) =>
+        prev.map((item) => (item.id === notificationId ? { ...item, ...patch } : item)),
+      );
+    },
+    [],
+  );
 
   const load = useCallback(
     async (pageNum: number, replace: boolean) => {
@@ -87,9 +97,7 @@ export default function NotificationsScreen() {
     async (notification: NotificationWithActor) => {
       if (!notification.read) {
         markAsRead(notification.id).catch(() => {});
-        setItems((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
-        );
+        patchNotification(notification.id, { read: true });
       }
 
       if (notification.type === 'follow') {
@@ -101,11 +109,34 @@ export default function NotificationsScreen() {
     [router],
   );
 
+  const handleCollaboratorDecision = useCallback(
+    async (notification: NotificationWithActor, status: 'accepted' | 'rejected') => {
+      if (!user || !notification.project_id) return;
+
+      try {
+        await updateCollaboratorStatus(notification.project_id, user.id, status);
+        if (!notification.read) {
+          await markAsRead(notification.id).catch(() => {});
+        }
+
+        patchNotification(notification.id, { read: true, collaborator_status: status });
+      } catch (err) {
+        console.error(`Failed to ${status} collaborator invite:`, err);
+      }
+    },
+    [patchNotification, user],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: NotificationWithActor }) => (
-      <NotificationItem notification={item} onPress={() => handlePress(item)} />
+      <NotificationItem
+        notification={item}
+        onPress={() => handlePress(item)}
+        onAcceptCollaborator={() => handleCollaboratorDecision(item, 'accepted')}
+        onRejectCollaborator={() => handleCollaboratorDecision(item, 'rejected')}
+      />
     ),
-    [handlePress],
+    [handleCollaboratorDecision, handlePress],
   );
 
   const keyExtractor = useCallback((item: NotificationWithActor) => item.id, []);

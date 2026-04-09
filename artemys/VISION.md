@@ -18,12 +18,14 @@ If you're going to beat LinkedIn's data moat, you go for young generations first
 ## The Product: 4 Layers
 
 ### Layer 1: The Gallery (Ship First)
-Instagram-style project gallery where builders showcase their work through short demo videos and rich media. This is the hook — the thing people actually want to use.
+Project-first gallery where builders showcase their work through two first-class formats: a single short demo video or an image gallery. This is the hook — the thing people actually want to use.
 
-- 6-10s demo video grid on profiles
+- 1 demo video, max 10s
+- 1-5 images as a first-class gallery format
 - Rich project posts with descriptions, tech stacks, and media
-- Tagged collaborators (cryptographically linked — you can't claim credit you didn't earn)
-- A feed to discover what others are building
+- Tagged collaborators (social now, cryptographically linked later)
+- A feed to see what people you follow are building
+- Explore / Search to help good projects get discovered
 - The vibe should make a 22-year-old designer or developer think "I want to post here"
 
 Think: LinkedIn + GitHub + Instagram (the cool creative side) + YouTube profile.
@@ -53,17 +55,17 @@ Open the verification layer as a protocol on Base. Let other apps query it. Now 
 
 ## V1 Scope — Project Gallery
 
-Ship the gallery. Nothing else. The core loop: post a project, look good doing it, see what your peers are building.
+Ship the gallery. Nothing else. The core loop: post a project, look good doing it, see what your peers are building, and help the right work get found.
 
 ### V1 Features
 1. **Sign up / Profile** — name, handle, avatar, bio
-2. **Post a project** — video/images, title, description, tags
+2. **Post a project** — video or image gallery, title, description, tags
 3. **Profile grid** — 3-column project gallery (the Instagram layout)
 4. **Basic feed** — see what people you follow are building
-5. **Tag collaborators** — social tags, no verification yet (that comes in Layer 2)
+5. **Explore / Search** — keep discovery in V1 even though it started outside the strict scope
+6. **Tag collaborators** — social tags, no verification yet (that comes in Layer 2)
 
 ### What's NOT in V1
-- Explore / search / discovery
 - Credential wallet
 - Verification / attestations
 - Sponsorship / funding

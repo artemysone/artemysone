@@ -28,9 +28,10 @@ interface MediaItemProps {
   item: { media_url: string; media_type: 'image' | 'video'; thumbnail_url: string | null };
   width: number;
   aspectRatio: number;
+  formatLabel: string;
 }
 
-function MediaItem({ item, width, aspectRatio }: MediaItemProps) {
+function MediaItem({ item, width, aspectRatio, formatLabel }: MediaItemProps) {
   const [videoLoading, setVideoLoading] = useState(Platform.OS !== 'web');
   const [videoError, setVideoError] = useState(false);
   const videoRef = useCallback((el: HTMLVideoElement | null) => {
@@ -42,6 +43,12 @@ function MediaItem({ item, width, aspectRatio }: MediaItemProps) {
   if (item.media_type === 'video') {
     return (
       <View style={[styles.mediaItem, itemStyle]}>
+        <View style={styles.badgeWrap}>
+          <View style={styles.badge}>
+            <Ionicons name="play" size={11} color="#fff" />
+            <Text style={styles.badgeText}>{formatLabel}</Text>
+          </View>
+        </View>
         {Platform.OS === 'web' ? (
           // @ts-ignore: web-only element
           <video
@@ -82,11 +89,19 @@ function MediaItem({ item, width, aspectRatio }: MediaItemProps) {
   }
 
   return (
-    <Image
-      source={{ uri: item.media_url }}
-      style={[styles.mediaItem, itemStyle]}
-      contentFit="cover"
-    />
+    <View style={[styles.mediaItem, itemStyle]}>
+      <Image
+        source={{ uri: item.media_url }}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+      />
+      <View style={styles.badgeWrap}>
+        <View style={styles.badge}>
+          <Ionicons name="images" size={11} color="#fff" />
+          <Text style={styles.badgeText}>{formatLabel}</Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -113,6 +128,11 @@ export function MediaCarousel({ items, fallbackProject, aspectRatio = 4 / 3 }: M
     }
     return [];
   }, [items, fallbackProject]);
+  const formatLabel = displayItems[0]?.media_type === 'video'
+    ? 'Video'
+    : displayItems.length > 1
+      ? 'Gallery'
+      : 'Image';
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
@@ -141,6 +161,7 @@ export function MediaCarousel({ items, fallbackProject, aspectRatio = 4 / 3 }: M
         item={displayItems[0]}
         width={screenWidth}
         aspectRatio={aspectRatio}
+        formatLabel={formatLabel}
       />
     );
   }
@@ -157,7 +178,7 @@ export function MediaCarousel({ items, fallbackProject, aspectRatio = 4 / 3 }: M
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         renderItem={({ item }) => (
-          <MediaItem item={item} width={screenWidth} aspectRatio={aspectRatio} />
+          <MediaItem item={item} width={screenWidth} aspectRatio={aspectRatio} formatLabel={formatLabel} />
         )}
       />
       {/* Pagination dots */}
@@ -179,6 +200,28 @@ export function MediaCarousel({ items, fallbackProject, aspectRatio = 4 / 3 }: M
 const styles = StyleSheet.create({
   mediaItem: {
     backgroundColor: colors.card,
+  },
+  badgeWrap: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 2,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: '#fff',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
   },
   mediaOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -28,15 +28,76 @@ import { CollaboratorChip } from '@/components/CollaboratorChip';
 import { Avatar } from '@/components/Avatar';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
-import type { Tag, Profile } from '@/types/database';
+import type { Tag, Profile, ProjectMediaFormat } from '@/types/database';
 import { isValidExternalUrl, normalizeExternalUrl } from '@/utils/validation';
 
 interface MediaItem {
   uri: string;
   type: 'image' | 'video';
+  durationMs?: number | null;
 }
 
-const MAX_MEDIA = 5;
+const MAX_GALLERY_IMAGES = 5;
+const MAX_VIDEO_SECONDS = 10;
+const DEFAULT_PROJECT_FORMAT: ProjectMediaFormat = 'gallery';
+const PENDING_COLLABORATOR_STATUS = 'pending';
+
+const FORMAT_COPY: Record<ProjectMediaFormat, { title: string; subtext: string; helper: string; limit: string }> = {
+  video: {
+    title: 'Demo video',
+    subtext: `One clip up to ${MAX_VIDEO_SECONDS}s`,
+    helper: 'Keep it to one clip and let the work speak for itself.',
+    limit: `Video demo clips are capped at ${MAX_VIDEO_SECONDS} seconds.`,
+  },
+  gallery: {
+    title: 'Image gallery',
+    subtext: `1 to ${MAX_GALLERY_IMAGES} images`,
+    helper: 'Use a short sequence of images to show the project clearly.',
+    limit: `Image galleries can include up to ${MAX_GALLERY_IMAGES} images.`,
+  },
+};
+
+function getMaxMediaItems(format: ProjectMediaFormat) {
+  return format === 'video' ? 1 : MAX_GALLERY_IMAGES;
+}
+
+function parseTechStack(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function getMediaValidationMessage(format: ProjectMediaFormat, items: MediaItem[]): string | null {
+  if (items.length === 0) {
+    return format === 'video'
+      ? `Add a demo video up to ${MAX_VIDEO_SECONDS} seconds.`
+      : `Add between 1 and ${MAX_GALLERY_IMAGES} images.`;
+  }
+
+  if (format === 'video') {
+    if (items.length !== 1) return 'Demo videos must be a single clip.';
+    if (items[0]?.type !== 'video') return 'Use one video clip for this project.';
+    if ((items[0]?.durationMs ?? 0) > MAX_VIDEO_SECONDS * 1000) {
+      return `Keep demo videos to ${MAX_VIDEO_SECONDS} seconds or less.`;
+    }
+    return null;
+  }
+
+  if (items.length > MAX_GALLERY_IMAGES) {
+    return `Image galleries can contain up to ${MAX_GALLERY_IMAGES} images.`;
+  }
+
+  if (items.some((item) => item.type !== 'image')) {
+    return 'Use images only for image galleries.';
+  }
+
+  return null;
+}
 
 interface SelectedCollaborator {
   user_id: string;
@@ -51,10 +112,12 @@ export default function CreateScreen() {
   const router = useRouter();
 
   // Form state
+  const [projectFormat, setProjectFormat] = useState<ProjectMediaFormat>(DEFAULT_PROJECT_FORMAT);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [demoUrl, setDemoUrl] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
+  const [techStackInput, setTechStackInput] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [collaborators, setCollaborators] = useState<SelectedCollaborator[]>([]);
@@ -110,36 +173,66 @@ export default function CreateScreen() {
 
   // ---------- Actions ----------
 
-  const launchPicker = useCallback(async (): Promise<MediaItem | null> => {
+  const launchPicker = useCallback(async (format: ProjectMediaFormat): Promise<MediaItem | null> => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      quality: 0.8,
-      videoMaxDuration: 30,
+      mediaTypes:
+        format === 'video'
+          ? ImagePicker.MediaTypeOptions.Videos
+          : ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+      videoMaxDuration: MAX_VIDEO_SECONDS,
     });
     if (result.canceled || result.assets.length === 0) return null;
     const asset = result.assets[0];
     const type: 'image' | 'video' =
       asset.type === 'video' || (asset.duration != null && asset.duration > 0) ? 'video' : 'image';
-    return { uri: asset.uri, type };
+    if (format === 'video') {
+      const durationMs = asset.duration ?? null;
+      if (durationMs != null && durationMs > MAX_VIDEO_SECONDS * 1000) {
+        Alert.alert(
+          'Video too long',
+          `Keep demo videos to ${MAX_VIDEO_SECONDS} seconds or less.`,
+        );
+        return null;
+      }
+      if (type !== 'video') return null;
+      return { uri: asset.uri, type: 'video', durationMs };
+    }
+
+    if (type !== 'image') return null;
+    return { uri: asset.uri, type: 'image' };
   }, []);
 
   const pickMedia = useCallback(async () => {
-    if (mediaItems.length >= MAX_MEDIA) {
-      Alert.alert('Limit reached', `You can add up to ${MAX_MEDIA} media items.`);
+    if (projectFormat === 'video' && mediaItems.length >= 1) {
+      Alert.alert('Limit reached', `Demo videos are limited to one clip of up to ${MAX_VIDEO_SECONDS} seconds.`);
       return;
     }
-    const picked = await launchPicker();
+
+    if (projectFormat === 'gallery' && mediaItems.length >= MAX_GALLERY_IMAGES) {
+      Alert.alert('Limit reached', `You can add up to ${MAX_GALLERY_IMAGES} images.`);
+      return;
+    }
+
+    const picked = await launchPicker(projectFormat);
     if (picked) setMediaItems((prev) => [...prev, picked]);
-  }, [mediaItems.length, launchPicker]);
+  }, [mediaItems.length, launchPicker, projectFormat]);
 
   const removeMedia = useCallback((index: number) => {
     setMediaItems((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const replacePrimaryMedia = useCallback(async () => {
-    const picked = await launchPicker();
+    const picked = await launchPicker(projectFormat);
     if (picked) setMediaItems((prev) => [picked, ...prev.slice(1)]);
-  }, [launchPicker]);
+  }, [launchPicker, projectFormat]);
+
+  const handleFormatChange = useCallback((format: ProjectMediaFormat) => {
+    setProjectFormat(format);
+    setMediaItems([]);
+  }, []);
+
+  const maxMediaItems = getMaxMediaItems(projectFormat);
 
   const toggleTag = useCallback((tagId: string) => {
     setSelectedTagIds((prev) =>
@@ -168,10 +261,12 @@ export default function CreateScreen() {
   }, []);
 
   const resetForm = useCallback(() => {
+    setProjectFormat(DEFAULT_PROJECT_FORMAT);
     setTitle('');
     setDescription('');
     setDemoUrl('');
     setRepoUrl('');
+    setTechStackInput('');
     setMediaItems([]);
     setSelectedTagIds([]);
     setCollaborators([]);
@@ -187,10 +282,15 @@ export default function CreateScreen() {
       Alert.alert('Missing title', 'Give your project a name.');
       return;
     }
-    if (mediaItems.length === 0) {
-      Alert.alert('Missing media', 'Add a demo video or screenshot.');
+    const mediaValidationMessage = getMediaValidationMessage(projectFormat, mediaItems);
+    if (mediaValidationMessage) {
+      Alert.alert(
+        mediaItems.length === 0 ? 'Missing media' : 'Invalid media',
+        mediaValidationMessage,
+      );
       return;
     }
+    const techStack = parseTechStack(techStackInput);
 
     const normalizedDemoUrl = normalizeExternalUrl(demoUrl);
     if (normalizedDemoUrl && !isValidExternalUrl(normalizedDemoUrl)) {
@@ -210,17 +310,20 @@ export default function CreateScreen() {
       const project = await createProject({
         title: title.trim(),
         description: description.trim(),
+        media_format: projectFormat,
         demo_url: normalizedDemoUrl || undefined,
         repo_url: normalizedRepoUrl || undefined,
+        tech_stack: techStack,
         tag_ids: selectedTagIds,
         collaborators: collaborators.map((c) => ({
           user_id: c.user_id,
           role: c.role,
+          status: PENDING_COLLABORATOR_STATUS,
         })),
       });
       createdProjectId = project.id;
 
-      // Upload the first media item to the project row (backward compat for feed thumbnails)
+      // Upload the first media item to the project row, then mirror the full set into project_media.
       const primary = mediaItems[0];
       const { mediaUrl, thumbnailUrl } = await uploadProjectMedia(
         user.id,
@@ -230,27 +333,24 @@ export default function CreateScreen() {
         { storageKey: 'primary', updateProject: true },
       );
 
-      // If there are additional media items, upload them in parallel to project_media
-      if (mediaItems.length > 1) {
-        const uploadResults = await Promise.all(
-          mediaItems.slice(1).map((item, i) =>
-            uploadProjectMedia(user.id, project.id, item.uri, item.type, {
-              storageKey: `media-${i + 1}`,
-              updateProject: false,
-            }).then((r) => ({
-              mediaUrl: r.mediaUrl,
-              mediaType: item.type as 'image' | 'video',
-              thumbnailUrl: r.thumbnailUrl,
-              sortOrder: i + 1,
-            })),
-          ),
-        );
+      const uploadResults = await Promise.all(
+        mediaItems.slice(1).map((item, i) =>
+          uploadProjectMedia(user.id, project.id, item.uri, item.type, {
+            storageKey: `media-${i + 1}`,
+            updateProject: false,
+          }).then((r) => ({
+            mediaUrl: r.mediaUrl,
+            mediaType: item.type,
+            thumbnailUrl: r.thumbnailUrl,
+            sortOrder: i + 1,
+          })),
+        ),
+      );
 
-        await addProjectMedia(project.id, [
-          { mediaUrl, mediaType: primary.type, thumbnailUrl, sortOrder: 0 },
-          ...uploadResults,
-        ]);
-      }
+      await addProjectMedia(project.id, [
+        { mediaUrl, mediaType: primary.type, thumbnailUrl, sortOrder: 0 },
+        ...uploadResults,
+      ]);
 
       if (collaborators.length > 0) {
         await Promise.allSettled(
@@ -277,7 +377,20 @@ export default function CreateScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [user, title, description, demoUrl, repoUrl, mediaItems, selectedTagIds, collaborators, resetForm, router]);
+  }, [
+    user,
+    title,
+    description,
+    demoUrl,
+    repoUrl,
+    techStackInput,
+    projectFormat,
+    mediaItems,
+    selectedTagIds,
+    collaborators,
+    resetForm,
+    router,
+  ]);
 
   // ---------- Render ----------
 
@@ -290,6 +403,42 @@ export default function CreateScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Format */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Project Format</Text>
+          <View style={styles.formatToggle}>
+            <Pressable
+              style={[styles.formatOption, projectFormat === 'video' && styles.formatOptionActive]}
+              onPress={() => handleFormatChange('video')}
+            >
+              <Text
+                style={[
+                  styles.formatOptionText,
+                  projectFormat === 'video' && styles.formatOptionTextActive,
+                ]}
+              >
+                {FORMAT_COPY.video.title}
+              </Text>
+              <Text style={styles.formatOptionSubtext}>{FORMAT_COPY.video.subtext}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.formatOption, projectFormat === 'gallery' && styles.formatOptionActive]}
+              onPress={() => handleFormatChange('gallery')}
+            >
+              <Text
+                style={[
+                  styles.formatOptionText,
+                  projectFormat === 'gallery' && styles.formatOptionTextActive,
+                ]}
+              >
+                {FORMAT_COPY.gallery.title}
+              </Text>
+              <Text style={styles.formatOptionSubtext}>{FORMAT_COPY.gallery.subtext}</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.helperText}>{FORMAT_COPY[projectFormat].helper}</Text>
+        </View>
+
         {/* Media upload */}
         <View style={styles.field}>
           {mediaItems.length === 0 ? (
@@ -323,7 +472,7 @@ export default function CreateScreen() {
                     )}
                   </View>
                 ))}
-                {mediaItems.length < MAX_MEDIA && (
+                {mediaItems.length < maxMediaItems && (
                   <Pressable style={styles.addMoreBtn} onPress={pickMedia}>
                     <Ionicons name="add" size={24} color={colors.text.tertiary} />
                   </Pressable>
@@ -331,6 +480,7 @@ export default function CreateScreen() {
               </View>
             </>
           )}
+          <Text style={styles.helperText}>{FORMAT_COPY[projectFormat].limit}</Text>
         </View>
 
         {/* Title */}
@@ -388,6 +538,23 @@ export default function CreateScreen() {
             autoCorrect={false}
             keyboardType="url"
           />
+        </View>
+
+        {/* Tech stack */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Tech Stack</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="React Native, Supabase, TypeScript"
+            placeholderTextColor={colors.text.tertiary}
+            value={techStackInput}
+            onChangeText={setTechStackInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.helperText}>
+            Separate technologies with commas. Keep it factual and specific.
+          </Text>
         </View>
 
         {/* Tags */}
@@ -506,6 +673,44 @@ const styles = StyleSheet.create({
   textarea: {
     height: 100,
     paddingTop: 13,
+  },
+  formatToggle: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  formatOption: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  formatOptionActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  formatOptionText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.text.primary,
+    marginBottom: 4,
+  },
+  formatOptionTextActive: {
+    color: colors.accent,
+  },
+  formatOptionSubtext: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.text.secondary,
+    lineHeight: 16,
+  },
+  helperText: {
+    marginTop: spacing.sm,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.text.secondary,
+    lineHeight: 18,
   },
   tagsRow: {
     flexDirection: 'row',

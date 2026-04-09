@@ -32,6 +32,15 @@ function PlayOverlay({ size }: { size: number }) {
   );
 }
 
+function MediaFormatBadge({ label, icon }: { label: string; icon: keyof typeof Ionicons.glyphMap }) {
+  return (
+    <View style={styles.formatBadge}>
+      <Ionicons name={icon} size={11} color="#fff" />
+      <Text style={styles.formatBadgeText}>{label}</Text>
+    </View>
+  );
+}
+
 function MediaCountBadge({ count }: { count: number }) {
   if (count <= 1) return null;
   return (
@@ -52,11 +61,16 @@ export function ProjectMediaPreview({
   const imageUri = project.thumbnail_url ?? (project.media_type !== 'video' ? project.media_url : null);
   const wrapperStyle = [styles.mediaWrapper, { aspectRatio, borderRadius }];
   const mediaCount = project.project_media?.length ?? 0;
+  const isVideo = project.media_type === 'video';
+  const formatLabel = isVideo ? 'Video' : mediaCount > 1 ? 'Gallery' : 'Image';
 
   if (imageUri) {
     return (
       <View style={wrapperStyle}>
         <Image source={{ uri: imageUri }} style={styles.media} contentFit="cover" />
+        <View style={styles.topLeftBadge}>
+          <MediaFormatBadge label={formatLabel} icon={isVideo ? 'play' : 'images'} />
+        </View>
         {project.media_type === 'video' ? <PlayOverlay size={playButtonSize} /> : null}
         <MediaCountBadge count={mediaCount} />
       </View>
@@ -75,6 +89,9 @@ export function ProjectMediaPreview({
             preload="metadata"
             style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover' }}
           />
+          <View style={styles.topLeftBadge}>
+            <MediaFormatBadge label={formatLabel} icon="play" />
+          </View>
           <PlayOverlay size={playButtonSize} />
         </View>
       );
@@ -91,6 +108,9 @@ export function ProjectMediaPreview({
               <View style={styles.thumbCircle} />
             </View>
           </LinearGradient>
+          <View style={styles.topLeftBadge}>
+            <MediaFormatBadge label={formatLabel} icon="play" />
+          </View>
           <PlayOverlay size={playButtonSize} />
         </View>
       );
@@ -99,6 +119,9 @@ export function ProjectMediaPreview({
     return (
       <View style={[styles.mediaWrapper, styles.iconFallback, styles.videoFallback, { aspectRatio, borderRadius }]}>
         <Ionicons name="image-outline" size={48} color={colors.text.tertiary} />
+        <View style={styles.topLeftBadge}>
+          <MediaFormatBadge label={formatLabel} icon="play" />
+        </View>
         <PlayOverlay size={playButtonSize} />
       </View>
     );
@@ -115,6 +138,9 @@ export function ProjectMediaPreview({
             <View style={styles.thumbCircle} />
           </View>
         </LinearGradient>
+        <View style={styles.topLeftBadge}>
+          <MediaFormatBadge label={formatLabel} icon="images" />
+        </View>
       </View>
     );
   }
@@ -122,6 +148,9 @@ export function ProjectMediaPreview({
   return (
     <View style={[styles.mediaWrapper, styles.iconFallback, { aspectRatio, borderRadius }]}>
       <Ionicons name="image-outline" size={48} color={colors.text.tertiary} />
+      <View style={styles.topLeftBadge}>
+        <MediaFormatBadge label={formatLabel} icon="images" />
+      </View>
     </View>
   );
 }
@@ -166,6 +195,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.3)',
     marginTop: 4,
+  },
+  topLeftBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+  },
+  formatBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  formatBadgeText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 10,
+    color: '#fff',
+    letterSpacing: 0.2,
   },
   playOverlay: {
     position: 'absolute',

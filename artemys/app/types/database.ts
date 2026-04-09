@@ -2,6 +2,9 @@
 // Row types (match Supabase tables 1:1)
 // ============================================================
 
+export type ProjectMediaFormat = 'video' | 'gallery';
+export type CollaboratorStatus = 'pending' | 'accepted' | 'rejected';
+
 export interface Profile {
   id: string;
   name: string;
@@ -19,9 +22,11 @@ export interface Project {
   description: string;
   media_url: string | null;
   media_type: 'image' | 'video';
+  media_format: ProjectMediaFormat;
   thumbnail_url: string | null;
   demo_url: string | null;
   repo_url: string | null;
+  tech_stack: string[];
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +45,9 @@ export interface Collaborator {
   project_id: string;
   user_id: string;
   role: string;
+  status: CollaboratorStatus;
+  invited_by: string | null;
+  responded_at: string | null;
   created_at: string;
 }
 
@@ -95,6 +103,7 @@ export interface CommentWithProfile extends Comment {
 export interface NotificationWithActor extends Notification {
   profiles: Profile;
   projects: Pick<Project, 'id' | 'title' | 'thumbnail_url'> | null;
+  collaborator_status?: CollaboratorStatus | null;
 }
 
 export interface CollaboratorWithProfile extends Collaborator {
@@ -133,9 +142,11 @@ export interface CreateProjectInput {
   description: string;
   media_url?: string;
   media_type?: 'image' | 'video';
+  media_format: ProjectMediaFormat;
   thumbnail_url?: string;
   demo_url?: string;
   repo_url?: string;
+  tech_stack: string[];
   tag_ids: string[];
   collaborators: ProjectCollaboratorInput[];
 }
@@ -150,4 +161,5 @@ export interface UpdateProfileInput {
 export interface ProjectCollaboratorInput {
   user_id: string;
   role: string;
+  status?: CollaboratorStatus;
 }

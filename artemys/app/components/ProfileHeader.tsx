@@ -32,6 +32,9 @@ export function ProfileHeader({
   return (
     <>
       <View style={styles.profileHeader}>
+        <View style={styles.eyebrowPill}>
+          <Text style={styles.eyebrowText}>Showcase</Text>
+        </View>
         <Avatar uri={profile?.avatar_url} name={name} size="lg" showRing />
         <Text style={styles.profileName}>{name}</Text>
         {handle ? <Text style={styles.profileHandle}>{handle}</Text> : null}
@@ -56,7 +59,7 @@ export function ProfileHeader({
 
       {showProjectsHeader && projectCount > 0 ? (
         <View style={styles.gridHeader}>
-          <Text style={styles.gridTitle}>Projects</Text>
+          <Text style={styles.gridTitle}>Showcase</Text>
           <Text style={styles.gridCount}>
             {projectCount} {projectCount === 1 ? 'project' : 'projects'}
           </Text>
@@ -70,7 +73,28 @@ const styles = StyleSheet.create({
   profileHeader: {
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: 20,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  eyebrowPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.accentSoft,
+    marginBottom: spacing.md,
+  },
+  eyebrowText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.accent,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   profileName: {
     fontFamily: fonts.display,
@@ -117,6 +141,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
   },
   gridHeader: {
     flexDirection: 'row',

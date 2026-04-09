@@ -5,17 +5,32 @@ import type { CreateProjectInput, Project, ProjectRelationsRow, ProjectWithDetai
 import { getFileExtension, getMediaContentType, readUriAsBlob, extractVideoThumbnailWeb } from '@/utils/media';
 import { normalizeExternalUrl } from '@/utils/validation';
 
+function normalizeTechStack(stack: string[]): string[] {
+  return Array.from(
+    new Set(
+      stack
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0),
+    ),
+  );
+}
+
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const { data: project, error } = await supabase.rpc('create_project_with_relations', {
     p_title: input.title.trim(),
     p_description: input.description.trim(),
     p_media_url: input.media_url ?? null,
     p_media_type: input.media_type ?? 'image',
+    p_media_format: input.media_format,
     p_thumbnail_url: input.thumbnail_url ?? null,
     p_demo_url: input.demo_url ? normalizeExternalUrl(input.demo_url) : null,
     p_repo_url: input.repo_url ? normalizeExternalUrl(input.repo_url) : null,
+    p_tech_stack: normalizeTechStack(input.tech_stack),
     p_tag_ids: input.tag_ids,
-    p_collaborators: input.collaborators,
+    p_collaborators: input.collaborators.map((collaborator) => ({
+      ...collaborator,
+      status: collaborator.status ?? 'pending',
+    })),
   });
   if (error) throw error;
   if (!project) throw new Error('Project creation returned no data.');

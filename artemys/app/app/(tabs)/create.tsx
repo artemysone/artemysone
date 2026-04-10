@@ -127,6 +127,7 @@ export default function CreateScreen() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [collaborators, setCollaborators] = useState<SelectedCollaborator[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Tags from DB
   const [tags, setTags] = useState<Tag[]>([]);
@@ -135,6 +136,7 @@ export default function CreateScreen() {
   const [collabQuery, setCollabQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
+  const [lastCompletedCollabQuery, setLastCompletedCollabQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load tags on mount
@@ -152,6 +154,7 @@ export default function CreateScreen() {
     if (trimmed.length < 2) {
       setSearchResults([]);
       setSearching(false);
+      setLastCompletedCollabQuery('');
       return;
     }
 
@@ -164,6 +167,7 @@ export default function CreateScreen() {
         setSearchResults(
           results.filter((p) => p.id !== user?.id && !addedIds.has(p.id)),
         );
+        setLastCompletedCollabQuery(trimmed);
       } catch (err) {
         console.error('Search failed:', err);
       } finally {
@@ -175,6 +179,12 @@ export default function CreateScreen() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [collabQuery, collaborators, user]);
+
+  const trimmedCollabQuery = collabQuery.trim();
+  const showCollabDropdown =
+    searching ||
+    searchResults.length > 0 ||
+    (trimmedCollabQuery.length >= 2 && lastCompletedCollabQuery === trimmedCollabQuery);
 
   // ---------- Actions ----------
 
@@ -277,35 +287,39 @@ export default function CreateScreen() {
     setCollaborators([]);
     setCollabQuery('');
     setSearchResults([]);
+    setSubmitError('');
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!user) return;
+    setSubmitError('');
+    Keyboard.dismiss();
+
+    if (!user) {
+      setSubmitError('Your account is still loading. Try posting again in a moment.');
+      return;
+    }
 
     // Validate
     if (!title.trim()) {
-      Alert.alert('Missing title', 'Give your project a name.');
+      setSubmitError('Give your project a name.');
       return;
     }
     const mediaValidationMessage = getMediaValidationMessage(projectFormat, mediaItems);
     if (mediaValidationMessage) {
-      Alert.alert(
-        mediaItems.length === 0 ? 'Missing media' : 'Invalid media',
-        mediaValidationMessage,
-      );
+      setSubmitError(mediaValidationMessage);
       return;
     }
     const techStack = parseTechStack(techStackInput);
 
     const normalizedDemoUrl = normalizeExternalUrl(demoUrl);
     if (normalizedDemoUrl && !isValidExternalUrl(normalizedDemoUrl)) {
-      Alert.alert('Invalid demo URL', 'Use a full http or https URL for the demo link.');
+      setSubmitError('Use a full http or https URL for the demo link.');
       return;
     }
 
     const normalizedRepoUrl = normalizeExternalUrl(repoUrl);
     if (normalizedRepoUrl && !isValidExternalUrl(normalizedRepoUrl)) {
-      Alert.alert('Invalid repository URL', 'Use a full http or https URL for the repository link.');
+      setSubmitError('Use a full http or https URL for the repository link.');
       return;
     }
 
@@ -384,10 +398,7 @@ export default function CreateScreen() {
           console.error('Failed to roll back incomplete project creation:', cleanupError);
         }
       }
-      Alert.alert(
-        'Error',
-        err instanceof Error ? err.message : 'Something went wrong. Try again.',
-      );
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
     } finally {
       setSubmitting(false);
     }
@@ -415,7 +426,7 @@ export default function CreateScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
       >
         {/* Format */}
         <View style={styles.field}>
@@ -598,11 +609,16 @@ export default function CreateScreen() {
           />
 
           {/* Search results dropdown */}
-          {(searchResults.length > 0 || searching) && (
+          {showCollabDropdown && (
             <View style={styles.searchDropdown}>
               {searching && searchResults.length === 0 ? (
                 <View style={styles.searchLoading}>
                   <ActivityIndicator size="small" color={colors.accent} />
+                </View>
+              ) : searchResults.length === 0 ? (
+                <View style={styles.searchEmpty}>
+                  <Text style={styles.searchEmptyTitle}>No results found</Text>
+                  <Text style={styles.searchEmptyText}>Try a full name or handle</Text>
                 </View>
               ) : (
                 searchResults.map((profile) => (
@@ -636,6 +652,12 @@ export default function CreateScreen() {
             </View>
           )}
         </View>
+
+        {submitError ? (
+          <View style={styles.submitErrorBox}>
+            <Text style={styles.submitErrorText}>{submitError}</Text>
+          </View>
+        ) : null}
 
         {/* Submit */}
         <Pressable
@@ -749,6 +771,22 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     alignItems: 'center',
   },
+  searchEmpty: {
+    paddingHorizontal: 13,
+    paddingVertical: spacing.md,
+  },
+  searchEmptyTitle: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.text.secondary,
+  },
+  searchEmptyText: {
+    marginTop: 4,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.text.tertiary,
+    lineHeight: 18,
+  },
   searchResult: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -771,6 +809,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.secondary,
     marginTop: 1,
+  },
+  submitErrorBox: {
+    marginBottom: spacing.md,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    backgroundColor: '#FDF1ED',
+    borderWidth: 1,
+    borderColor: '#F3D2C7',
+  },
+  submitErrorText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.accent,
+    lineHeight: 18,
   },
   mediaThumbs: {
     flexDirection: 'row',

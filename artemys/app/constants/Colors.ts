@@ -1,5 +1,5 @@
 export const colors = {
-  bg: '#FAF7F2',
+  bg: '#FFFFFF',
   card: '#FFFFFF',
   input: '#F3EDE4',
   text: {
@@ -8,6 +8,8 @@ export const colors = {
     tertiary: '#B8B0A8',
   },
   accent: '#E07A5F',
+  verified: '#0D9488',
+  liked: '#E25555',
   accentHover: '#D06A4F',
   accentSoft: 'rgba(224,122,95,0.08)',
   gold: '#F2CC8F',

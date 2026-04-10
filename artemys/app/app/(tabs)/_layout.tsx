@@ -1,9 +1,10 @@
 import { Tabs } from 'expo-router';
-import { View, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/Avatar';
 import { colors } from '@/constants/Colors';
+import { fonts } from '@/constants/Typography';
 
 export default function TabLayout() {
   const { profile } = useAuth();
@@ -22,7 +23,10 @@ export default function TabLayout() {
         options={{
           title: 'Feed',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+            <View style={styles.labeledTab}>
+              <Ionicons name="home-outline" size={size} color={color} />
+              <Text style={[styles.tabLabel, { color }]}>Feed</Text>
+            </View>
           ),
         }}
       />
@@ -31,7 +35,10 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search-outline" size={size} color={color} />
+            <View style={styles.labeledTab}>
+              <Ionicons name="search-outline" size={size} color={color} />
+              <Text style={[styles.tabLabel, { color }]}>Explore</Text>
+            </View>
           ),
         }}
       />
@@ -51,7 +58,10 @@ export default function TabLayout() {
         options={{
           title: 'Alerts',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications-outline" size={size} color={color} />
+            <View style={styles.labeledTab}>
+              <Ionicons name="notifications-outline" size={size} color={color} />
+              <Text style={[styles.tabLabel, { color }]}>Alerts</Text>
+            </View>
           ),
         }}
       />
@@ -101,6 +111,14 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
   },
+  labeledTab: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  tabLabel: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+  },
   avatarRing: {
     borderWidth: 1.5,
     borderColor: colors.accent,
@@ -114,6 +132,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
   },
 });

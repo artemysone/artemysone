@@ -21,42 +21,32 @@ interface ProjectCardProps {
 
 export const ProjectCard = memo(function ProjectCard({
   project,
-  isFollowing,
-  isOwnProject,
   onLike,
-  onFollow,
   onShare,
   onPress,
   onAuthorPress,
 }: ProjectCardProps) {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const { profiles: author } = project;
-  const hasDescription = !!project.description;
-  const fullText = hasDescription ? `${project.title} · ${project.description}` : project.title;
-  const captionPreview = fullText.slice(0, 110).trim();
-  const hasLongCaption = fullText.length > captionPreview.length;
+  const acceptedCollabs =
+    project.collaborators?.filter((c) => c.status === 'accepted') ?? [];
 
   return (
     <View style={styles.card}>
-      {/* Header */}
+      {/* Author */}
       <View style={styles.header}>
         <Pressable style={styles.authorTap} onPress={onAuthorPress}>
           <Avatar uri={author.avatar_url} name={author.name} size="sm" />
           <View style={styles.headerInfo}>
-            <Text style={styles.authorNameRow}>
+            <View style={styles.authorNameRow}>
               <Text style={styles.authorName}>{author.name}</Text>
-              <Text style={styles.authorHandle}> @{author.handle}</Text>
+              <Ionicons name="checkmark-circle" size={16} color={colors.verified} />
+            </View>
+            <Text style={styles.headerMeta}>
+              @{author.handle} · {timeSince(project.created_at)}
             </Text>
-            <Text style={styles.headerMeta}>{timeSince(project.created_at)}</Text>
           </View>
         </Pressable>
-        {!isOwnProject && (
-          <Pressable onPress={onFollow}>
-            <Text style={[styles.followText, isFollowing && styles.followTextActive]}>
-              {isFollowing ? 'Following' : 'Follow'}
-            </Text>
-          </Pressable>
-        )}
       </View>
 
       {/* Media */}
@@ -74,39 +64,72 @@ export const ProjectCard = memo(function ProjectCard({
 
       {/* Actions */}
       <View style={styles.actions}>
-        <View style={styles.actionsLeft}>
-          <Pressable style={styles.actionBtn} onPress={onLike}>
-            <Ionicons
-              name={project.user_has_liked ? 'heart' : 'heart-outline'}
-              size={24}
-              color={project.user_has_liked ? '#E25555' : colors.text.primary}
-            />
-            {project.like_count > 0 && <Text style={styles.actionCount}>{formatCount(project.like_count)}</Text>}
-          </Pressable>
-          <Pressable style={styles.actionBtn} onPress={onPress}>
-            <Ionicons name="chatbubble-outline" size={22} color={colors.text.primary} />
-            {project.comment_count > 0 && <Text style={styles.actionCount}>{formatCount(project.comment_count)}</Text>}
-          </Pressable>
-        </View>
-        <Pressable style={styles.actionBtn}>
-          <Ionicons name="bookmark-outline" size={22} color={colors.text.primary} />
+        <Pressable style={styles.actionBtn} onPress={onLike}>
+          <Ionicons
+            name={project.user_has_liked ? 'heart' : 'heart-outline'}
+            size={22}
+            color={project.user_has_liked ? colors.liked : colors.text.primary}
+          />
+          {project.like_count > 0 && (
+            <Text style={styles.actionCount}>
+              {formatCount(project.like_count)}
+            </Text>
+          )}
+        </Pressable>
+        <Pressable style={styles.actionBtn} onPress={onPress}>
+          <Ionicons
+            name="chatbubble-outline"
+            size={20}
+            color={colors.text.primary}
+          />
+          {project.comment_count > 0 && (
+            <Text style={styles.actionCount}>
+              {formatCount(project.comment_count)}
+            </Text>
+          )}
+        </Pressable>
+        <Pressable style={styles.actionBtn} onPress={onShare}>
+          <Ionicons
+            name="share-outline"
+            size={20}
+            color={colors.text.primary}
+          />
         </Pressable>
       </View>
 
-
       {/* Caption */}
       <View style={styles.captionWrap}>
-        <Text style={styles.caption} numberOfLines={2}>
-          <Text style={styles.captionTitle}>{project.title}</Text>
-          {hasDescription ? ` · ${project.description}` : ''}
-        </Text>
-        {hasLongCaption && (
-          <Pressable onPress={onPress}>
-            <Text style={styles.moreText}>more</Text>
-          </Pressable>
+        <Text style={styles.title}>{project.title}</Text>
+        {!!project.description && (
+          <Text style={styles.description} numberOfLines={3}>
+            {project.description}
+          </Text>
         )}
       </View>
 
+      {/* Collaborators */}
+      {acceptedCollabs.length > 0 && (
+        <View style={styles.collabRow}>
+          <View style={styles.avatarStack}>
+            {acceptedCollabs.slice(0, 3).map((collab, i) => (
+              <View
+                key={collab.user_id}
+                style={[styles.stackedAvatar, i > 0 && { marginLeft: -8 }]}
+              >
+                <Avatar
+                  uri={collab.profiles.avatar_url}
+                  name={collab.profiles.name}
+                  containerSize={22}
+                />
+              </View>
+            ))}
+          </View>
+          <Text style={styles.collabText}>
+            {acceptedCollabs.length} collaborator
+            {acceptedCollabs.length !== 1 ? 's' : ''} · Verified
+          </Text>
+        </View>
+      )}
     </View>
   );
 });
@@ -114,11 +137,12 @@ export const ProjectCard = memo(function ProjectCard({
 const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.sm,
+    paddingBottom: 12,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
   },
   authorTap: {
@@ -131,15 +155,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   authorNameRow: {
-    fontSize: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   authorName: {
     fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
     color: colors.text.primary,
-  },
-  authorHandle: {
-    fontFamily: fonts.body,
-    color: colors.text.secondary,
   },
   headerMeta: {
     fontFamily: fonts.body,
@@ -147,30 +170,17 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 1,
   },
-  followText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.accent,
-  },
-  followTextActive: {
-    color: colors.text.secondary,
-  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 10,
-  },
-  actionsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 16,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     padding: 2,
   },
   actionCount: {
@@ -180,21 +190,39 @@ const styles = StyleSheet.create({
   },
   captionWrap: {
     paddingHorizontal: 14,
+    marginTop: 8,
+  },
+  title: {
+    fontFamily: fonts.serif,
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  description: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    lineHeight: 20,
     marginTop: 4,
   },
-  caption: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.text.primary,
-    lineHeight: 18,
+  collabRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    marginTop: 10,
+    paddingBottom: 4,
+    gap: 8,
   },
-  captionTitle: {
-    fontFamily: fonts.bodySemiBold,
+  avatarStack: {
+    flexDirection: 'row',
   },
-  moreText: {
+  stackedAvatar: {
+    borderWidth: 2,
+    borderColor: colors.card,
+    borderRadius: 999,
+  },
+  collabText: {
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.text.secondary,
-    marginTop: 2,
   },
 });

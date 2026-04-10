@@ -2,55 +2,184 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   TextInput,
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { AppBar } from '@/components/AppBar';
 import { Avatar } from '@/components/Avatar';
-import { TagChip } from '@/components/TagChip';
 import { getTags } from '@/services/tags';
-import { searchAll, getProjectsByTag } from '@/services/search';
+import { searchAll } from '@/services/search';
+import {
+  getExploreProjects,
+  getProjectsByCategory,
+  type ExploreProject,
+} from '@/services/explore';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import type { Tag, Profile, Project } from '@/types/database';
 
-type ViewMode = 'browse' | 'search' | 'tag';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const HORIZONTAL_PAD = spacing.lg;
+const CARD_GAP = spacing.sm;
+const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PAD * 2 - CARD_GAP) / 2;
+const CARD_HEIGHT = CARD_WIDTH * 1.15;
+
+const GRADIENTS: [string, string, string][] = [
+  ['#D946EF', '#A855F7', '#7C3AED'],
+  ['#14B8A6', '#0D9488', '#047857'],
+  ['#F97316', '#FB923C', '#F59E0B'],
+  ['#475569', '#334155', '#1E293B'],
+  ['#3B82F6', '#6366F1', '#8B5CF6'],
+  ['#EC4899', '#F472B6', '#F9A8D4'],
+  ['#10B981', '#06B6D4', '#0EA5E9'],
+  ['#E11D48', '#BE185D', '#9333EA'],
+];
+
+function ExploreCard({
+  project,
+  index,
+  onPress,
+}: {
+  project: ExploreProject;
+  index: number;
+  onPress: () => void;
+}) {
+  const gradient = GRADIENTS[index % GRADIENTS.length];
+  const hasThumbnail = !!project.thumbnail_url;
+
+  return (
+    <Pressable
+      style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
+      onPress={onPress}
+    >
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {hasThumbnail && (
+        <>
+          <Image
+            source={{ uri: project.thumbnail_url! }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.5)']}
+            start={{ x: 0, y: 0.4 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </>
+      )}
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {project.title}
+        </Text>
+        <Text style={styles.cardHandle} numberOfLines={1}>
+          @{project.profiles.handle}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function CategoryChip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={[styles.categoryChip, selected && styles.categoryChipSelected]}
+      onPress={onPress}
+    >
+      <Text
+        style={[
+          styles.categoryChipText,
+          selected && styles.categoryChipTextSelected,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+type ViewMode = 'browse' | 'search';
 
 export default function ExploreScreen() {
   const router = useRouter();
 
-  // Search state
+  // Search
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [profileResults, setProfileResults] = useState<Profile[]>([]);
   const [projectResults, setProjectResults] = useState<Project[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Tags state
+  // Browse
   const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [trending, setTrending] = useState<ExploreProject[]>([]);
+  const [newItems, setNewItems] = useState<ExploreProject[]>([]);
+  const [categoryProjects, setCategoryProjects] = useState<ExploreProject[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [categoryLoading, setCategoryLoading] = useState(false);
 
-  // Tag filter state
-  const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
-  const [tagProjects, setTagProjects] = useState<Project[]>([]);
-  const [tagLoading, setTagLoading] = useState(false);
+  const viewMode: ViewMode = query.trim().length >= 2 ? 'search' : 'browse';
 
-  const viewMode: ViewMode =
-    selectedTag ? 'tag' : query.trim().length >= 2 ? 'search' : 'browse';
-
-  // Load tags on mount
-  useEffect(() => {
-    getTags()
-      .then(setTags)
-      .catch((err) => console.error('Failed to load tags:', err));
+  const fetchExploreData = useCallback(async () => {
+    const [tagsData, projects] = await Promise.all([
+      getTags(),
+      getExploreProjects(),
+    ]);
+    setTags(tagsData);
+    setTrending(projects.slice(0, 4));
+    setNewItems(projects.slice(4));
   }, []);
 
-  // Debounced search
+  useEffect(() => {
+    (async () => {
+      try {
+        await fetchExploreData();
+      } catch (err) {
+        console.error('Failed to load explore data:', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [fetchExploreData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchExploreData();
+    } catch (err) {
+      console.error('Failed to refresh:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchExploreData]);
+
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -80,162 +209,228 @@ export default function ExploreScreen() {
     };
   }, [query]);
 
-  const handleTagPress = useCallback(async (tag: Tag) => {
-    setSelectedTag(tag);
-    setTagLoading(true);
-    try {
-      const projects = await getProjectsByTag(tag.id);
-      setTagProjects(projects);
-    } catch (err) {
-      console.error('Failed to load tag projects:', err);
-    } finally {
-      setTagLoading(false);
+  const handleCategoryPress = useCallback(async (categoryId: string) => {
+    if (categoryId === selectedCategory) return;
+    setSelectedCategory(categoryId);
+    if (categoryId === 'all') {
+      setCategoryProjects([]);
+      return;
     }
-  }, []);
+    setCategoryLoading(true);
+    try {
+      const projects = await getProjectsByCategory(categoryId);
+      setCategoryProjects(projects);
+    } catch (err) {
+      console.error('Failed to load category:', err);
+    } finally {
+      setCategoryLoading(false);
+    }
+  }, [selectedCategory]);
 
-  const clearTagFilter = useCallback(() => {
-    setSelectedTag(null);
-    setTagProjects([]);
-  }, []);
-
-  // ---------- Renderers ----------
-
-  const renderProjectItem = useCallback(
-    ({ item }: { item: Project }) => (
-      <Pressable
-        style={styles.projectItem}
-        onPress={() => router.push(`/project/${item.id}`)}
-      >
-        <View style={styles.projectItemBody}>
-          <Text style={styles.projectItemTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={styles.projectItemDesc} numberOfLines={2}>
-            {item.description}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
-      </Pressable>
-    ),
+  const navigateToProject = useCallback(
+    (id: string) =>
+      router.push({ pathname: '/project/[id]', params: { id } }),
     [router],
   );
 
-  const renderProfileItem = useCallback(
-    ({ item }: { item: Profile }) => (
-      <Pressable
-        style={styles.profileItem}
-        onPress={() => router.push({ pathname: '/[handle]', params: { handle: item.handle } })}
-      >
-        <Avatar uri={item.avatar_url} name={item.name} size="sm" />
-        <View style={styles.profileItemInfo}>
-          <Text style={styles.profileItemName}>{item.name}</Text>
-          <Text style={styles.profileItemHandle}>@{item.handle}</Text>
-        </View>
-      </Pressable>
-    ),
+  const navigateToProfile = useCallback(
+    (handle: string) =>
+      router.push({ pathname: '/[handle]', params: { handle } }),
     [router],
   );
 
-  // ---------- Search results ----------
+  const renderCardGrid = (projects: ExploreProject[], indexOffset = 0) => (
+    <View style={styles.cardGrid}>
+      {projects.map((project, i) => (
+        <ExploreCard
+          key={project.id}
+          project={project}
+          index={i + indexOffset}
+          onPress={() => navigateToProject(project.id)}
+        />
+      ))}
+    </View>
+  );
 
-  const renderSearchResults = () => {
-    if (searching && profileResults.length === 0 && projectResults.length === 0) {
+  const renderBrowse = () => {
+    if (loading) {
       return (
-        <View style={styles.center}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
       );
     }
 
-    if (!searching && profileResults.length === 0 && projectResults.length === 0) {
+    return (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.browseContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent}
+          />
+        }
+      >
+        {/* Category chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryRow}
+        >
+          <CategoryChip
+            label="All"
+            selected={selectedCategory === 'all'}
+            onPress={() => handleCategoryPress('all')}
+          />
+          {tags.map((tag) => (
+            <CategoryChip
+              key={tag.id}
+              label={tag.name}
+              selected={selectedCategory === tag.id}
+              onPress={() => handleCategoryPress(tag.id)}
+            />
+          ))}
+        </ScrollView>
+
+        {selectedCategory === 'all' ? (
+          <>
+            {trending.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Trending This Week</Text>
+                {renderCardGrid(trending)}
+              </>
+            )}
+            {newItems.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>New & Noteworthy</Text>
+                {renderCardGrid(newItems, trending.length)}
+              </>
+            )}
+            {trending.length === 0 && newItems.length === 0 && (
+              <View style={styles.centered}>
+                <Ionicons
+                  name="compass-outline"
+                  size={40}
+                  color={colors.text.tertiary}
+                />
+                <Text style={styles.emptyText}>
+                  No projects to explore yet
+                </Text>
+              </View>
+            )}
+          </>
+        ) : categoryLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={colors.accent} />
+          </View>
+        ) : categoryProjects.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>
+              {tags.find((t) => t.id === selectedCategory)?.name}
+            </Text>
+            {renderCardGrid(categoryProjects)}
+          </>
+        ) : (
+          <View style={styles.centered}>
+            <Text style={styles.emptyText}>
+              No projects with this tag yet
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
+
+  const renderSearchResults = () => {
+    if (
+      searching &&
+      profileResults.length === 0 &&
+      projectResults.length === 0
+    ) {
       return (
-        <View style={styles.center}>
-          <Ionicons name="search-outline" size={40} color={colors.text.tertiary} />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      );
+    }
+
+    if (
+      !searching &&
+      profileResults.length === 0 &&
+      projectResults.length === 0
+    ) {
+      return (
+        <View style={styles.centered}>
+          <Ionicons
+            name="search-outline"
+            size={40}
+            color={colors.text.tertiary}
+          />
           <Text style={styles.emptyText}>No results found</Text>
         </View>
       );
     }
 
-    const sections: { key: string; data: unknown }[] = [];
-    if (profileResults.length > 0) sections.push({ key: 'profiles', data: profileResults });
-    if (projectResults.length > 0) sections.push({ key: 'projects', data: projectResults });
-
     return (
-      <FlatList
-        data={sections}
-        keyExtractor={(item) => item.key}
-        renderItem={({ item: section }) => (
-          <View>
-            <Text style={styles.sectionHeader}>
-              {section.key === 'profiles' ? 'People' : 'Projects'}
-            </Text>
-            {section.key === 'profiles'
-              ? (section.data as Profile[]).map((p) => (
-                  <View key={p.id}>{renderProfileItem({ item: p })}</View>
-                ))
-              : (section.data as Project[]).map((p) => (
-                  <View key={p.id}>{renderProjectItem({ item: p })}</View>
-                ))}
-          </View>
-        )}
-        contentContainerStyle={styles.listContent}
+      <ScrollView
+        contentContainerStyle={styles.searchContent}
         keyboardShouldPersistTaps="handled"
-      />
+      >
+        {profileResults.length > 0 && (
+          <>
+            <Text style={styles.searchSectionHeader}>People</Text>
+            {profileResults.map((profile) => (
+              <Pressable
+                key={profile.id}
+                style={styles.profileItem}
+                onPress={() => navigateToProfile(profile.handle)}
+              >
+                <Avatar
+                  uri={profile.avatar_url}
+                  name={profile.name}
+                  size="sm"
+                />
+                <View style={styles.profileItemInfo}>
+                  <Text style={styles.profileItemName}>{profile.name}</Text>
+                  <Text style={styles.profileItemHandle}>
+                    @{profile.handle}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </>
+        )}
+        {projectResults.length > 0 && (
+          <>
+            <Text style={styles.searchSectionHeader}>Projects</Text>
+            {projectResults.map((project) => (
+              <Pressable
+                key={project.id}
+                style={styles.projectItem}
+                onPress={() => navigateToProject(project.id)}
+              >
+                <View style={styles.projectItemBody}>
+                  <Text style={styles.projectItemTitle} numberOfLines={1}>
+                    {project.title}
+                  </Text>
+                  <Text style={styles.projectItemDesc} numberOfLines={2}>
+                    {project.description}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.text.tertiary}
+                />
+              </Pressable>
+            ))}
+          </>
+        )}
+      </ScrollView>
     );
   };
-
-  // ---------- Tag filtered view ----------
-
-  const renderTagView = () => {
-    if (tagLoading) {
-      return (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
-      );
-    }
-
-    return (
-      <FlatList
-        data={tagProjects}
-        keyExtractor={(item) => item.id}
-        renderItem={renderProjectItem}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <Pressable style={styles.tagHeader} onPress={clearTagFilter}>
-            <Ionicons name="arrow-back" size={20} color={colors.text.primary} />
-            <Text style={styles.tagHeaderText}>{selectedTag?.name}</Text>
-          </Pressable>
-        }
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.emptyText}>No projects with this tag yet</Text>
-          </View>
-        }
-        keyboardShouldPersistTaps="handled"
-      />
-    );
-  };
-
-  // ---------- Browse (default) view ----------
-
-  const renderBrowse = () => (
-    <View style={styles.browseContainer}>
-      <Text style={styles.sectionHeader}>Browse by tag</Text>
-      <FlatList
-        data={tags}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tagsRow}
-        renderItem={({ item: tag }) => (
-          <TagChip label={tag.name} onPress={() => handleTagPress(tag)} />
-        )}
-      />
-    </View>
-  );
-
-  // ---------- Main render ----------
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -244,30 +439,33 @@ export default function ExploreScreen() {
       {/* Search bar */}
       <View style={styles.searchBarContainer}>
         <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={18} color={colors.text.tertiary} />
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={colors.text.tertiary}
+          />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search people or projects..."
+            placeholder="Search projects, people, tags..."
             placeholderTextColor={colors.text.tertiary}
             value={query}
-            onChangeText={(text) => {
-              setQuery(text);
-              if (selectedTag) clearTagFilter();
-            }}
+            onChangeText={setQuery}
             returnKeyType="search"
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')}>
-              <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={colors.text.tertiary}
+              />
             </Pressable>
           )}
         </View>
       </View>
 
       {/* Content */}
-      {viewMode === 'tag' && renderTagView()}
-      {viewMode === 'search' && renderSearchResults()}
-      {viewMode === 'browse' && renderBrowse()}
+      {viewMode === 'search' ? renderSearchResults() : renderBrowse()}
     </SafeAreaView>
   );
 }
@@ -277,8 +475,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+
+  // Search
   searchBarContainer: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: HORIZONTAL_PAD,
     paddingBottom: spacing.md,
   },
   searchBar: {
@@ -296,12 +496,77 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     paddingVertical: spacing.md,
   },
-  listContent: {
-    paddingHorizontal: spacing.lg,
+
+  // Browse
+  browseContent: {
     paddingBottom: spacing.xxl,
   },
-  center: {
-    flex: 1,
+  categoryRow: {
+    paddingHorizontal: HORIZONTAL_PAD,
+    gap: spacing.sm,
+    paddingBottom: spacing.lg,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  categoryChipSelected: {
+    backgroundColor: colors.text.primary,
+    borderColor: colors.text.primary,
+  },
+  categoryChipText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.text.secondary,
+  },
+  categoryChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  sectionTitle: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.text.primary,
+    paddingHorizontal: HORIZONTAL_PAD,
+    marginBottom: spacing.md,
+  },
+
+  // Card grid
+  cardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: HORIZONTAL_PAD,
+    gap: CARD_GAP,
+    marginBottom: spacing.xl,
+  },
+  card: {
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
+  cardContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.md,
+  },
+  cardTitle: {
+    fontFamily: fonts.display,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  cardHandle: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
+  },
+
+  // States
+  centered: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: spacing.xxl * 2,
@@ -312,7 +577,13 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     marginTop: spacing.md,
   },
-  sectionHeader: {
+
+  // Search results
+  searchContent: {
+    paddingHorizontal: HORIZONTAL_PAD,
+    paddingBottom: spacing.xxl,
+  },
+  searchSectionHeader: {
     fontFamily: fonts.bodySemiBold,
     fontSize: 13,
     color: colors.text.secondary,
@@ -320,23 +591,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
-  },
-  browseContainer: {
-    paddingHorizontal: spacing.lg,
-  },
-  tagsRow: {
-    gap: spacing.sm,
-  },
-  tagHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-  },
-  tagHeaderText: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    color: colors.text.primary,
   },
   profileItem: {
     flexDirection: 'row',

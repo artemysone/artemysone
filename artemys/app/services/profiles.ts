@@ -105,11 +105,15 @@ export async function searchProfiles(query: string, limit = 10): Promise<Profile
   const trimmedQuery = query.trim();
   if (trimmedQuery.length < 2) return [];
 
+  const safeLimit = Math.min(Math.max(limit, 1), MAX_SEARCH_RESULTS);
+
   const { data, error } = await supabase
-    .rpc('search_profiles', {
-      p_query: trimmedQuery,
-      p_limit: Math.min(Math.max(limit, 1), MAX_SEARCH_RESULTS),
-    });
+    .from('profiles')
+    .select('*')
+    .or(`name.ilike.*${trimmedQuery}*,handle.ilike.*${trimmedQuery}*`)
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+
   if (error) throw error;
   return (data ?? []) as Profile[];
 }

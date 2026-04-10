@@ -278,6 +278,7 @@ export default function ExploreScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryRow}
+          style={styles.categoryScroll}
         >
           <CategoryChip
             label="All"
@@ -501,10 +502,13 @@ const styles = StyleSheet.create({
   browseContent: {
     paddingBottom: spacing.xxl,
   },
+  categoryScroll: {
+    flexGrow: 0,
+    marginBottom: spacing.lg,
+  },
   categoryRow: {
     paddingHorizontal: HORIZONTAL_PAD,
     gap: spacing.sm,
-    paddingBottom: spacing.lg,
   },
   categoryChip: {
     paddingHorizontal: 16,

@@ -70,11 +70,9 @@ export const ProjectCard = memo(function ProjectCard({
             size={22}
             color={project.user_has_liked ? colors.liked : colors.text.primary}
           />
-          {project.like_count > 0 && (
-            <Text style={styles.actionCount}>
-              {formatCount(project.like_count)}
-            </Text>
-          )}
+          <Text style={styles.actionCount}>
+            {project.like_count > 0 ? formatCount(project.like_count) : ' '}
+          </Text>
         </Pressable>
         <Pressable style={styles.actionBtn} onPress={onPress}>
           <Ionicons
@@ -82,11 +80,9 @@ export const ProjectCard = memo(function ProjectCard({
             size={20}
             color={colors.text.primary}
           />
-          {project.comment_count > 0 && (
-            <Text style={styles.actionCount}>
-              {formatCount(project.comment_count)}
-            </Text>
-          )}
+          <Text style={styles.actionCount}>
+            {project.comment_count > 0 ? formatCount(project.comment_count) : ' '}
+          </Text>
         </Pressable>
         <Pressable style={styles.actionBtn} onPress={onShare}>
           <Ionicons
@@ -175,18 +171,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingTop: 10,
-    gap: 16,
+    gap: 10,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 3,
     padding: 2,
   },
   actionCount: {
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: colors.text.primary,
+    minWidth: 14,
   },
   captionWrap: {
     paddingHorizontal: 14,

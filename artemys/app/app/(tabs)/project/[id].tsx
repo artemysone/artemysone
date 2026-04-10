@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -36,10 +37,15 @@ type RichProject = ProjectWithDetails & {
   collaborators?: Array<ProjectWithDetails['collaborators'][number] & { status?: string }>;
 };
 
+const WIDE_BREAKPOINT = 768;
+const MAX_CONTENT_WIDTH = 1100;
+
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { width: screenWidth } = useWindowDimensions();
+  const isWide = screenWidth >= WIDE_BREAKPOINT;
 
   const [project, setProject] = useState<ProjectWithDetails | null>(null);
   const [mediaItems, setMediaItems] = useState<ProjectMedia[]>([]);
@@ -47,6 +53,7 @@ export default function ProjectDetailScreen() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
+  const [commentFocused, setCommentFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(false);
 
@@ -173,10 +180,6 @@ export default function ProjectDetailScreen() {
   const tags = project?.project_tags?.map((pt) => pt.tags) ?? [];
   const collabs = richProject?.collaborators?.filter((c) => c.status !== 'rejected') ?? [];
   const techStack = (richProject?.tech_stack ?? []).map((item) => item.trim()).filter(Boolean);
-  const pendingCollaborators = collabs.filter((c) => c.status === 'pending').length;
-  const collaboratorCount = collabs.length;
-  const mediaCount = mediaItems.length || (project?.project_media?.length ?? 0) || (project?.media_url ? 1 : 0);
-  const formatLabel = project?.media_type === 'video' ? 'Video' : mediaCount > 1 ? 'Gallery' : 'Image';
   const author = project?.profiles;
   const isOwnProject = user?.id === project?.user_id;
 
@@ -184,7 +187,7 @@ export default function ProjectDetailScreen() {
 
   const header = (
     <View style={styles.header}>
-      <Pressable onPress={() => router.back()} style={styles.backBtn}>
+      <Pressable onPress={() => author ? router.replace({ pathname: '/[handle]', params: { handle: author.handle } }) : router.back()} style={styles.backBtn}>
         <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
       </Pressable>
       <Text style={styles.headerTitle}>Project</Text>
@@ -223,6 +226,172 @@ export default function ProjectDetailScreen() {
     );
   }
 
+  const detailsContent = (
+    <>
+      <View style={[styles.body, isWide && styles.bodyWide]}>
+        {/* Author + Actions row */}
+        <View style={styles.authorActionsRow}>
+          <Pressable
+            style={styles.authorRow}
+            onPress={() => router.push({ pathname: '/[handle]', params: { handle: author.handle } })}
+          >
+            <Avatar uri={author.avatar_url} name={author.name} size="sm" />
+            <View style={styles.authorRowInfo}>
+              <Text style={styles.authorRowName}>{author.name}</Text>
+              <Text style={styles.authorRowHandle}>@{author.handle}</Text>
+            </View>
+          </Pressable>
+
+          <View style={styles.actions}>
+            <Pressable style={styles.actionBtn} onPress={handleLike}>
+              <Ionicons
+                name={project.user_has_liked ? 'heart' : 'heart-outline'}
+                size={20}
+                color={project.user_has_liked ? colors.liked : colors.text.secondary}
+              />
+              <Text style={styles.actionText}>{formatCount(project.like_count)}</Text>
+            </Pressable>
+            <Pressable style={styles.actionBtn}>
+              <Ionicons name="chatbubble-outline" size={18} color={colors.text.secondary} />
+              <Text style={styles.actionText}>{formatCount(project.comment_count)}</Text>
+            </Pressable>
+            <Pressable style={styles.actionBtn} onPress={handleShare}>
+              <Ionicons name="share-outline" size={20} color={colors.text.secondary} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Title + Tags row */}
+        <View style={styles.titleTagsRow}>
+          <Text style={styles.title}>{project.title}</Text>
+          {tags.length > 0 && (
+            <View style={styles.tagsRow}>
+              {tags.map((tag) => (
+                <TagChip key={tag.id} label={tag.name} />
+              ))}
+            </View>
+          )}
+        </View>
+
+        <Text style={styles.description}>{project.description}</Text>
+
+        {/* Follow */}
+        {!isOwnProject && (
+          <Pressable
+            style={[styles.followBtn, isFollowing && styles.followBtnActive]}
+            onPress={handleFollow}
+          >
+            <Text style={[styles.followBtnText, isFollowing && styles.followBtnTextActive]}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {techStack.length > 0 && (
+        <View style={[styles.stackSection, isWide && styles.sectionWide]}>
+          <Text style={styles.sectionLabel}>Tech Stack</Text>
+          <View style={styles.stackRow}>
+            {techStack.map((item) => (
+              <TagChip key={item} label={item} />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Links */}
+      {(project.demo_url || project.repo_url) && (
+        <View style={[styles.linksSection, isWide && styles.sectionWide]}>
+          {project.demo_url && (
+            <Pressable
+              style={styles.linkRow}
+              onPress={() => openExternalLink(project.demo_url!)}
+            >
+              <Ionicons name="globe-outline" size={18} color={colors.accent} />
+              <Text style={styles.linkText} numberOfLines={1}>Live Demo</Text>
+            </Pressable>
+          )}
+          {project.repo_url && (
+            <Pressable
+              style={styles.linkRow}
+              onPress={() => openExternalLink(project.repo_url!)}
+            >
+              <Ionicons name="logo-github" size={18} color={colors.accent} />
+              <Text style={styles.linkText} numberOfLines={1}>Source Code</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* Collaborators */}
+      {collabs.length > 0 && (
+        <View style={[styles.section, isWide && styles.sectionWide]}>
+          <Text style={styles.sectionTitle}>Collaborators</Text>
+          <View style={styles.collabList}>
+            {collabs.map((c) => (
+              <Pressable
+                key={`${c.project_id}-${c.user_id}`}
+                style={styles.collabItem}
+                onPress={() => router.push({ pathname: '/[handle]', params: { handle: c.profiles.handle } })}
+              >
+                <Avatar uri={c.profiles.avatar_url} name={c.profiles.name} size="sm" />
+                <View style={styles.collabInfo}>
+                  <Text style={styles.collabName}>{c.profiles.name}</Text>
+                  <View style={styles.collabMetaRow}>
+                    {c.role ? <Text style={styles.collabRole}>{c.role}</Text> : null}
+                    <View style={[styles.collabStatusChip, c.status === 'pending' && styles.collabStatusPending]}>
+                      <Text style={[styles.collabStatusText, c.status === 'pending' && styles.collabStatusPendingText]}>
+                        {c.status === 'pending' ? 'Pending' : 'Confirmed'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Comments */}
+      <View style={[styles.section, isWide && styles.sectionWide]}>
+        <Text style={styles.sectionTitle}>
+          Comments{comments.length > 0 ? ` (${comments.length})` : ''}
+        </Text>
+
+        {comments.length === 0 && (
+          <Text style={styles.noComments}>No comments yet. Be the first!</Text>
+        )}
+
+        {comments.map((comment) => (
+          <View key={comment.id} style={styles.commentItem}>
+            <Pressable onPress={() => router.push({ pathname: '/[handle]', params: { handle: comment.profiles.handle } })}>
+              <Avatar
+                uri={comment.profiles.avatar_url}
+                name={comment.profiles.name}
+                size="sm"
+              />
+            </Pressable>
+            <View style={styles.commentContent}>
+              <View style={styles.commentHeader}>
+                <Text style={styles.commentAuthor}>{comment.profiles.name}</Text>
+                <Text style={styles.commentTime}>{timeSince(comment.created_at)}</Text>
+              </View>
+              <Text style={styles.commentText}>{comment.text}</Text>
+            </View>
+            {user?.id === comment.user_id && (
+              <Pressable
+                style={styles.deleteBtn}
+                onPress={() => handleDeleteComment(comment.id)}
+              >
+                <Ionicons name="trash-outline" size={14} color={colors.text.tertiary} />
+              </Pressable>
+            )}
+          </View>
+        ))}
+      </View>
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {header}
@@ -234,228 +403,62 @@ export default function ProjectDetailScreen() {
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isWide && styles.scrollContentWide,
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Media */}
-          <MediaCarousel
-            items={mediaItems}
-            fallbackProject={project}
-          />
-
-          <View style={styles.signalRow}>
-            <View style={styles.signalChip}>
-              <Ionicons
-                name={project.media_type === 'video' ? 'play' : 'images'}
-                size={12}
-                color={colors.accent}
+          {isWide ? (
+            <View style={styles.twoColumn}>
+              <View style={styles.mediaColumn}>
+                <MediaCarousel
+                  items={mediaItems}
+                  fallbackProject={project}
+                />
+              </View>
+              <View style={styles.detailsColumn}>
+                {detailsContent}
+              </View>
+            </View>
+          ) : (
+            <>
+              <MediaCarousel
+                items={mediaItems}
+                fallbackProject={project}
               />
-              <Text style={styles.signalText}>{formatLabel}</Text>
-            </View>
-            {mediaCount > 1 && (
-              <View style={styles.signalChip}>
-                <Ionicons name="layers-outline" size={12} color={colors.accent} />
-                <Text style={styles.signalText}>{mediaCount} frames</Text>
-              </View>
-            )}
-            {collaboratorCount > 0 && (
-              <View style={styles.signalChip}>
-                <Ionicons name="people-outline" size={12} color={colors.accent} />
-                <Text style={styles.signalText}>
-                  {collaboratorCount} collaborator{collaboratorCount === 1 ? '' : 's'}
-                </Text>
-              </View>
-            )}
-            {pendingCollaborators > 0 && (
-              <View style={[styles.signalChip, styles.pendingChip]}>
-                <Ionicons name="time-outline" size={12} color={colors.text.secondary} />
-                <Text style={styles.pendingText}>{pendingCollaborators} pending</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            <Pressable style={styles.actionBtn} onPress={handleLike}>
-              <Ionicons
-                name={project.user_has_liked ? 'heart' : 'heart-outline'}
-                size={22}
-                color={project.user_has_liked ? '#E25555' : colors.text.primary}
-              />
-              <Text style={styles.actionText}>{formatCount(project.like_count)}</Text>
-            </Pressable>
-            <Pressable style={styles.actionBtn}>
-              <Ionicons name="chatbubble-outline" size={20} color={colors.text.primary} />
-              <Text style={styles.actionText}>{formatCount(project.comment_count)}</Text>
-            </Pressable>
-            <Pressable style={styles.actionBtn} onPress={handleShare}>
-              <Ionicons name="share-outline" size={22} color={colors.text.primary} />
-            </Pressable>
-          </View>
-
-          {/* Title + Description */}
-          <View style={styles.body}>
-            <Text style={styles.title}>{project.title}</Text>
-            <Text style={styles.description}>{project.description}</Text>
-          </View>
-
-          {techStack.length > 0 && (
-            <View style={styles.stackSection}>
-              <Text style={styles.sectionLabel}>Tech Stack</Text>
-              <View style={styles.stackRow}>
-                {techStack.map((item) => (
-                  <TagChip key={item} label={item} />
-                ))}
-              </View>
-            </View>
+              {detailsContent}
+            </>
           )}
-
-          {/* Links */}
-          {(project.demo_url || project.repo_url) && (
-            <View style={styles.linksSection}>
-              {project.demo_url && (
-                <Pressable
-                  style={styles.linkRow}
-                  onPress={() => openExternalLink(project.demo_url!)}
-                >
-                  <Ionicons name="globe-outline" size={18} color={colors.accent} />
-                  <Text style={styles.linkText} numberOfLines={1}>Live Demo</Text>
-                </Pressable>
-              )}
-              {project.repo_url && (
-                <Pressable
-                  style={styles.linkRow}
-                  onPress={() => openExternalLink(project.repo_url!)}
-                >
-                  <Ionicons name="logo-github" size={18} color={colors.accent} />
-                  <Text style={styles.linkText} numberOfLines={1}>Source Code</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
-
-          {/* Tags */}
-          {tags.length > 0 && (
-            <View style={styles.tagsRow}>
-              {tags.map((tag) => (
-                <TagChip key={tag.id} label={tag.name} />
-              ))}
-            </View>
-          )}
-
-          {/* Author */}
-          <Pressable
-            style={styles.authorSection}
-            onPress={() => router.push({ pathname: '/[handle]', params: { handle: author.handle } })}
-          >
-            <Avatar uri={author.avatar_url} name={author.name} size="md" showRing />
-            <View style={styles.authorInfo}>
-              <Text style={styles.authorName}>{author.name}</Text>
-              <Text style={styles.authorHandle}>@{author.handle}</Text>
-            </View>
-            {!isOwnProject && (
-              <Pressable
-                style={[styles.followBtn, isFollowing && styles.followBtnActive]}
-                onPress={handleFollow}
-              >
-                <Text style={[styles.followBtnText, isFollowing && styles.followBtnTextActive]}>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Text>
-              </Pressable>
-            )}
-          </Pressable>
-
-          {/* Collaborators */}
-          {collabs.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Collaborators</Text>
-              <View style={styles.collabList}>
-                {collabs.map((c) => (
-                  <Pressable
-                    key={`${c.project_id}-${c.user_id}`}
-                    style={styles.collabItem}
-                    onPress={() => router.push({ pathname: '/[handle]', params: { handle: c.profiles.handle } })}
-                  >
-                    <Avatar uri={c.profiles.avatar_url} name={c.profiles.name} size="sm" />
-                    <View style={styles.collabInfo}>
-                      <Text style={styles.collabName}>{c.profiles.name}</Text>
-                      <View style={styles.collabMetaRow}>
-                        {c.role ? <Text style={styles.collabRole}>{c.role}</Text> : null}
-                        <View style={[styles.collabStatusChip, c.status === 'pending' && styles.collabStatusPending]}>
-                          <Text style={[styles.collabStatusText, c.status === 'pending' && styles.collabStatusPendingText]}>
-                            {c.status === 'pending' ? 'Pending' : 'Confirmed'}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Comments */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Comments{comments.length > 0 ? ` (${comments.length})` : ''}
-            </Text>
-
-            {comments.length === 0 && (
-              <Text style={styles.noComments}>No comments yet. Be the first!</Text>
-            )}
-
-            {comments.map((comment) => (
-              <View key={comment.id} style={styles.commentItem}>
-                <Pressable onPress={() => router.push({ pathname: '/[handle]', params: { handle: comment.profiles.handle } })}>
-                  <Avatar
-                    uri={comment.profiles.avatar_url}
-                    name={comment.profiles.name}
-                    size="sm"
-                  />
-                </Pressable>
-                <View style={styles.commentContent}>
-                  <View style={styles.commentHeader}>
-                    <Text style={styles.commentAuthor}>{comment.profiles.name}</Text>
-                    <Text style={styles.commentTime}>{timeSince(comment.created_at)}</Text>
-                  </View>
-                  <Text style={styles.commentText}>{comment.text}</Text>
-                </View>
-                {user?.id === comment.user_id && (
-                  <Pressable
-                    style={styles.deleteBtn}
-                    onPress={() => handleDeleteComment(comment.id)}
-                  >
-                    <Ionicons name="trash-outline" size={14} color={colors.text.tertiary} />
-                  </Pressable>
-                )}
-              </View>
-            ))}
-          </View>
         </ScrollView>
 
         {/* Comment Input */}
-        <View style={styles.commentInputContainer}>
-          <TextInput
-            style={styles.commentInput}
-            placeholder="Add a comment..."
-            placeholderTextColor={colors.text.tertiary}
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
-            maxLength={500}
-          />
-          <Pressable
-            style={[styles.sendBtn, !commentText.trim() && styles.sendBtnDisabled]}
-            onPress={handleAddComment}
-            disabled={!commentText.trim() || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={18} color="#fff" />
-            )}
-          </Pressable>
+        <View style={[styles.commentInputContainer, isWide && styles.commentInputWide]}>
+          <View style={[styles.commentInputRow, commentFocused && styles.commentInputRowFocused]}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment..."
+              placeholderTextColor={colors.text.tertiary}
+              value={commentText}
+              onChangeText={setCommentText}
+              onFocus={() => setCommentFocused(true)}
+              onBlur={() => setCommentFocused(false)}
+              multiline
+              maxLength={500}
+            />
+            <Pressable
+              style={[styles.sendBtn, !commentText.trim() && styles.sendBtnDisabled]}
+              onPress={handleAddComment}
+              disabled={!commentText.trim() || submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="send" size={18} color="#fff" />
+              )}
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -472,6 +475,27 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: spacing.md,
+  },
+  scrollContentWide: {
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: spacing.lg,
+  },
+
+  // Two-column layout
+  twoColumn: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+  },
+  mediaColumn: {
+    flex: 3,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
+  detailsColumn: {
+    flex: 2,
+    paddingTop: spacing.xs,
   },
 
   // Header
@@ -512,14 +536,69 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
 
+  // Body
+  body: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  bodyWide: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  titleTagsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+    flexWrap: 'wrap',
+  },
+  title: {
+    fontFamily: fonts.serifBold,
+    fontSize: 22,
+    color: colors.text.primary,
+  },
+  authorActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  authorRowInfo: {
+    flex: 1,
+  },
+  authorRowName: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.text.primary,
+  },
+  authorRowHandle: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: 1,
+  },
+  description: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.text.secondary,
+    lineHeight: 21,
+  },
+
   // Actions
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: 12,
-    paddingBottom: spacing.sm,
     gap: spacing.md,
+  },
+  sectionWide: {
+    paddingHorizontal: 0,
   },
   actionBtn: {
     flexDirection: 'row',
@@ -529,59 +608,8 @@ const styles = StyleSheet.create({
   actionText: {
     fontFamily: fonts.body,
     fontSize: 13,
-    color: colors.text.primary,
-  },
-  signalRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: spacing.md,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  signalChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.full,
-    backgroundColor: colors.accentSoft,
-  },
-  signalText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
-    color: colors.accent,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  pendingChip: {
-    backgroundColor: colors.input,
-  },
-  pendingText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 11,
     color: colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-
-  // Body
-  body: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  title: {
-    fontFamily: fonts.serifBold,
-    fontSize: 22,
-    color: colors.text.primary,
-    marginBottom: spacing.sm,
-  },
-  description: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.text.secondary,
-    lineHeight: 21,
+    minWidth: 14,
   },
   stackSection: {
     paddingHorizontal: spacing.md,
@@ -630,41 +658,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
   },
 
-  // Author
-  authorSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    marginHorizontal: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    gap: spacing.sm,
-  },
-  authorInfo: {
-    flex: 1,
-  },
-  authorName: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 15,
-    color: colors.text.primary,
-  },
-  authorHandle: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.text.secondary,
-    marginTop: 1,
-  },
   followBtn: {
+    alignSelf: 'flex-start',
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
     borderRadius: radius.sm,
     borderWidth: 1.5,
     borderColor: colors.accent,
+    marginTop: spacing.md,
   },
   followBtnActive: {
     backgroundColor: colors.accentSoft,
@@ -786,30 +789,46 @@ const styles = StyleSheet.create({
 
   // Comment Input
   commentInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.bg,
+  },
+  commentInputWide: {
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: spacing.lg,
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.input,
+    borderRadius: radius.md,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
     gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  commentInputRowFocused: {
+    borderColor: colors.accent,
   },
   commentInput: {
     flex: 1,
     fontFamily: fonts.body,
     fontSize: 14,
     color: colors.text.primary,
-    backgroundColor: colors.input,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
     paddingVertical: 10,
     maxHeight: 100,
+    // @ts-ignore — web-only property
+    outlineStyle: 'none',
   },
   sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',

@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Dimensions,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,11 +27,8 @@ import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import type { Tag, Profile, Project } from '@/types/database';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HORIZONTAL_PAD = spacing.lg;
-const CARD_GAP = spacing.sm;
-const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PAD * 2 - CARD_GAP) / 2;
-const CARD_HEIGHT = CARD_WIDTH * 1.15;
+const CARD_GAP = 2;
 
 const GRADIENTS: [string, string, string][] = [
   ['#D946EF', '#A855F7', '#7C3AED'],
@@ -55,42 +51,33 @@ function ExploreCard({
   onPress: () => void;
 }) {
   const gradient = GRADIENTS[index % GRADIENTS.length];
-  const hasThumbnail = !!project.thumbnail_url;
+  const imageUri =
+    project.thumbnail_url ?? (project.media_type !== 'video' ? project.media_url : null);
 
   return (
-    <Pressable
-      style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
-      onPress={onPress}
-    >
+    <Pressable style={styles.card} onPress={onPress}>
       <LinearGradient
         colors={gradient}
         start={{ x: 0, y: 1 }}
         end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFill}
       />
-      {hasThumbnail && (
-        <>
-          <Image
-            source={{ uri: project.thumbnail_url! }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.5)']}
-            start={{ x: 0, y: 0.4 }}
-            end={{ x: 0, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </>
+      {imageUri ? (
+        <Image
+          source={{ uri: imageUri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+        />
+      ) : (
+        <View style={styles.cardFallback}>
+          <Ionicons name="image-outline" size={24} color="rgba(255,255,255,0.85)" />
+        </View>
       )}
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {project.title}
-        </Text>
-        <Text style={styles.cardHandle} numberOfLines={1}>
-          @{project.profiles.handle}
-        </Text>
-      </View>
+      {project.media_type === 'video' && (
+        <View style={styles.videoBadge}>
+          <Ionicons name="play" size={11} color="#FFFFFF" />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -273,7 +260,6 @@ export default function ExploreScreen() {
           />
         }
       >
-        {/* Category chips */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -547,26 +533,28 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   card: {
-    borderRadius: radius.lg,
+    width: '49%',
+    aspectRatio: 1,
+    borderRadius: radius.sm,
     overflow: 'hidden',
+    position: 'relative',
+    marginBottom: CARD_GAP,
   },
-  cardContent: {
+  cardFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoBadge: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.md,
-  },
-  cardTitle: {
-    fontFamily: fonts.display,
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  cardHandle: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 2,
+    top: 6,
+    right: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
 
   // States

@@ -9,12 +9,27 @@ interface AppBarProps {
   onLeftPress?: () => void;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightPress?: () => void;
+  rightText?: string;
+  rightTextColor?: string;
   badgeCount?: number;
 }
 
-export function AppBar({ title, leftIcon, onLeftPress, rightIcon, onRightPress, badgeCount }: AppBarProps) {
+export function AppBar({
+  title,
+  leftIcon,
+  onLeftPress,
+  rightIcon,
+  onRightPress,
+  rightText,
+  rightTextColor = colors.text.primary,
+  badgeCount,
+}: AppBarProps) {
   return (
     <View style={styles.appBar}>
+      <View pointerEvents="none" style={styles.titleContainer}>
+        <Text style={styles.title}>{title}</Text>
+      </View>
+
       {leftIcon ? (
         <Pressable onPress={onLeftPress} style={styles.leftAction}>
           <Ionicons name={leftIcon} size={24} color={colors.text.primary} />
@@ -22,8 +37,11 @@ export function AppBar({ title, leftIcon, onLeftPress, rightIcon, onRightPress, 
       ) : (
         <View style={styles.leftAction} />
       )}
-      <Text style={styles.title}>{title}</Text>
-      {rightIcon ? (
+      {rightText ? (
+        <Pressable onPress={onRightPress} style={styles.rightTextAction}>
+          <Text style={[styles.rightText, { color: rightTextColor }]}>{rightText}</Text>
+        </Pressable>
+      ) : rightIcon ? (
         <Pressable onPress={onRightPress} style={styles.rightAction}>
           <View>
             <Ionicons name={rightIcon} size={24} color={colors.text.primary} />
@@ -39,6 +57,7 @@ export function AppBar({ title, leftIcon, onLeftPress, rightIcon, onRightPress, 
 
 const styles = StyleSheet.create({
   appBar: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -47,12 +66,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     minHeight: 56,
   },
+  titleContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: spacing.xl,
+    right: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   leftAction: {
     width: 32,
     alignItems: 'flex-start',
+    zIndex: 1,
   },
   title: {
-    flex: 1,
     fontFamily: fonts.display,
     fontSize: 22,
     color: colors.text.primary,
@@ -61,6 +89,14 @@ const styles = StyleSheet.create({
   rightAction: {
     width: 32,
     alignItems: 'flex-end',
+    zIndex: 1,
+  },
+  rightTextAction: {
+    zIndex: 1,
+  },
+  rightText: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
   },
   badge: {
     position: 'absolute',

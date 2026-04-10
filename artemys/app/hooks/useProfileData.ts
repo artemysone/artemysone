@@ -4,8 +4,8 @@ import { getUserProjects } from '@/services/projects';
 import type { ProfileWithStats, Project } from '@/types/database';
 
 type ProfileLookup =
-  | { userId: string; handle?: undefined }
-  | { handle: string; userId?: undefined };
+  | { userId: string }
+  | { handle: string };
 
 export function useProfileData(lookup: ProfileLookup) {
   const [profileData, setProfileData] = useState<ProfileWithStats | null>(null);
@@ -13,14 +13,13 @@ export function useProfileData(lookup: ProfileLookup) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  const lookupKey = 'userId' in lookup ? lookup.userId : lookup.handle;
 
   const fetchData = useCallback(async () => {
-    const key = lookup.userId ?? lookup.handle;
-    if (!key) return;
     setError(false);
     try {
       // Resolve profile first (by ID or handle)
-      const prof = lookup.userId
+      const prof = 'userId' in lookup
         ? await getProfile(lookup.userId)
         : await getProfileByHandleWithStats(lookup.handle);
       if (!prof) {
@@ -34,7 +33,7 @@ export function useProfileData(lookup: ProfileLookup) {
       console.error('Failed to load profile:', err);
       setError(true);
     }
-  }, [lookup.userId, lookup.handle]);
+  }, [lookupKey]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);

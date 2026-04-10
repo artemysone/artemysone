@@ -30,6 +30,9 @@ import {
 export default function ProfileEditScreen() {
   const { user, profile, refreshProfile } = useAuth();
   const router = useRouter();
+  const navigateToProfile = useCallback(() => {
+    router.navigate('/(tabs)/profile');
+  }, [router]);
 
   const [name, setName] = useState(profile?.name ?? '');
   const [handle, setHandle] = useState(profile?.handle ?? '');
@@ -126,7 +129,7 @@ export default function ProfileEditScreen() {
       });
 
       await refreshProfile();
-      router.back();
+      navigateToProfile();
     } catch (err: unknown) {
       Alert.alert(
         'Error',
@@ -135,7 +138,17 @@ export default function ProfileEditScreen() {
     } finally {
       setSaving(false);
     }
-  }, [user, name, handle, bio, handleAvailable, avatarUri, originalAvatarUrl, refreshProfile, router]);
+  }, [
+    user,
+    name,
+    handle,
+    bio,
+    handleAvailable,
+    avatarUri,
+    originalAvatarUrl,
+    refreshProfile,
+    navigateToProfile,
+  ]);
 
   const displayName = name.trim() || profile?.name || 'Builder';
 
@@ -143,7 +156,7 @@ export default function ProfileEditScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={navigateToProfile} hitSlop={12}>
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Edit Profile</Text>

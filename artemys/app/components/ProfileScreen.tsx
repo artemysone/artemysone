@@ -4,8 +4,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Alert,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,15 +52,13 @@ function EmptyProjectsOther({ name }: { name: string }) {
 
 type ProfileScreenProps =
   | { handle: string; isTab?: false }
-  | { handle?: undefined; isTab: true };
+  | { isTab: true };
 
 export function ProfileScreen(props: ProfileScreenProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const isTab = props.isTab ?? false;
-
   // Tab uses current user's ID; navigated uses handle
-  const lookup = isTab
+  const lookup = props.isTab
     ? { userId: user!.id }
     : { handle: props.handle };
 
@@ -71,7 +67,7 @@ export function ProfileScreen(props: ProfileScreenProps) {
     refreshing, error, fetchData, refresh,
   } = useProfileData(lookup);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [signOutArmed, setSignOutArmed] = useState(false);
   const isOwnProfile = !!user && !!profileData && profileData.id === user.id;
 
   // Refetch on focus — handles both initial load and returning from profile-edit
@@ -92,9 +88,9 @@ export function ProfileScreen(props: ProfileScreenProps) {
 
   // Fetch follow status once we have profile data (non-tab, not own profile)
   useEffect(() => {
-    if (isTab || !profileData || !user || profileData.id === user.id) return;
+    if (props.isTab || !profileData || !user || profileData.id === user.id) return;
     getFollowStatus(user.id, profileData.id).then(setIsFollowing).catch(() => {});
-  }, [isTab, profileData, user]);
+  }, [props.isTab, profileData, user]);
 
   const handleFollow = useCallback(() => {
     if (!user || !profileData) return;
@@ -108,12 +104,21 @@ export function ProfileScreen(props: ProfileScreenProps) {
     if (profileData) shareProfileWithLink(profileData.name, profileData.handle);
   }, [profileData]);
 
-  const handleSignOut = useCallback(() => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
-    ]);
-  }, [signOut]);
+  useEffect(() => {
+    if (!signOutArmed) return;
+
+    const timeoutId = setTimeout(() => setSignOutArmed(false), 3000);
+    return () => clearTimeout(timeoutId);
+  }, [signOutArmed]);
+
+  const handleSignOutPress = useCallback(() => {
+    if (signOutArmed) {
+      signOut();
+      return;
+    }
+
+    setSignOutArmed(true);
+  }, [signOut, signOutArmed]);
 
   const name = profileData?.name ?? 'Builder';
 
@@ -148,35 +153,13 @@ export function ProfileScreen(props: ProfileScreenProps) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppBar
         title="artemys"
-        leftIcon={!isTab ? 'arrow-back' : undefined}
-        onLeftPress={!isTab ? () => router.back() : undefined}
-        rightIcon={isOwnProfile ? 'settings-outline' : undefined}
-        onRightPress={isOwnProfile ? () => setMenuVisible(true) : undefined}
+        leftIcon={!props.isTab ? 'arrow-back' : undefined}
+        onLeftPress={!props.isTab ? () => router.back() : undefined}
+        rightIcon={isOwnProfile && !signOutArmed ? 'log-out-outline' : undefined}
+        rightText={isOwnProfile && signOutArmed ? 'Sign out' : undefined}
+        rightTextColor={signOutArmed ? '#D44' : undefined}
+        onRightPress={isOwnProfile ? handleSignOutPress : undefined}
       />
-
-      {isOwnProfile && (
-        <Modal
-          visible={menuVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setMenuVisible(false)}
-        >
-          <Pressable style={styles.menuOverlay} onPress={() => setMenuVisible(false)}>
-            <View style={styles.menuCard}>
-              <Pressable
-                style={styles.menuItem}
-                onPress={() => {
-                  setMenuVisible(false);
-                  handleSignOut();
-                }}
-              >
-                <Ionicons name="log-out-outline" size={18} color="#D44" />
-                <Text style={[styles.menuItemText, { color: '#D44' }]}>Sign Out</Text>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Modal>
-      )}
 
       <ProfileView
         profileData={profileData}
@@ -198,44 +181,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-  },
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    paddingTop: 100,
-    paddingRight: spacing.lg,
-  },
-  menuCard: {
-    backgroundColor: colors.bg,
-    borderRadius: radius.md,
-    paddingVertical: spacing.xs,
-    minWidth: 180,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: 12,
-    paddingHorizontal: spacing.md,
-  },
-  menuItemText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 15,
-    color: colors.text.primary,
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: colors.borderLight,
-    marginHorizontal: spacing.sm,
   },
   pillBtn: {
     flex: 1,

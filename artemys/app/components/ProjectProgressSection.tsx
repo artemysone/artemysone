@@ -32,10 +32,11 @@ export const ProjectProgressSection = memo(function ProjectProgressSection({
       {hasUpdates &&
         updates.map((update, index) => {
           const isLast = index === updates.length - 1;
+          const label = update.bump_type ? BUMP_LABELS[update.bump_type].toLowerCase() : null;
           return (
             <View key={update.id} style={styles.timelineItem}>
               <View style={styles.timelineContent}>
-                <Pill label={BUMP_LABELS[update.bump_type].toLowerCase()} size="sm" />
+                {label && <Pill label={label} size="sm" />}
                 <Text style={styles.timelineBody}>{update.body}</Text>
               </View>
               <View style={styles.timelineRail}>

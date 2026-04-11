@@ -2,20 +2,17 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
-import { formatVersionLabel } from '@/utils/version';
 
-type VersionPillProps = {
-  version: string;
+type PillProps = {
+  label: string;
   size?: 'sm' | 'md';
 };
 
-export function VersionPill({ version, size = 'md' }: VersionPillProps) {
+export function Pill({ label, size = 'md' }: PillProps) {
   const isSm = size === 'sm';
   return (
     <View style={[styles.pill, isSm && styles.pillSm]}>
-      <Text style={[styles.text, isSm && styles.textSm]}>
-        {formatVersionLabel(version)}
-      </Text>
+      <Text style={[styles.text, isSm && styles.textSm]}>{label}</Text>
     </View>
   );
 }
@@ -26,7 +23,6 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: colors.accentSoft,
-    alignSelf: 'flex-start',
   },
   pillSm: {
     paddingHorizontal: 8,

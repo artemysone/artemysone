@@ -17,7 +17,7 @@ import { createProjectUpdate } from '@/services/projectUpdates';
 import { colors, radius, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import type { ProjectBumpType, ProjectUpdateWithProfile } from '@/types/database';
-import { formatVersionLabel, nextVersion } from '@/utils/version';
+import { BUMP_LABELS, formatVersionLabel, nextVersion } from '@/utils/version';
 
 type ProjectEditSheetProps = {
   visible: boolean;
@@ -29,11 +29,9 @@ type ProjectEditSheetProps = {
   onEditDetails: () => void;
 };
 
-const BUMP_OPTIONS: { value: ProjectBumpType; label: string }[] = [
-  { value: 'patch', label: 'Tweak' },
-  { value: 'minor', label: 'Update' },
-  { value: 'major', label: 'Release' },
-];
+const BUMP_OPTIONS: { value: ProjectBumpType; label: string }[] = (
+  ['patch', 'minor', 'major'] as const
+).map((value) => ({ value, label: BUMP_LABELS[value] }));
 
 export const ProjectEditSheet = memo(function ProjectEditSheet({
   visible,

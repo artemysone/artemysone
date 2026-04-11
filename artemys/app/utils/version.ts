@@ -2,6 +2,12 @@ import type { ProjectBumpType } from '@/types/database';
 
 export const INITIAL_PROJECT_VERSION = '0.1.0';
 
+export const BUMP_LABELS: Record<ProjectBumpType, string> = {
+  patch: 'Tweak',
+  minor: 'Update',
+  major: 'Release',
+};
+
 function parseVersion(version: string): [number, number, number] {
   const parts = version.split('.').map((part) => Number.parseInt(part, 10));
   if (parts.length !== 3 || parts.some((p) => Number.isNaN(p))) {

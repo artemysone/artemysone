@@ -28,24 +28,19 @@ import { MediaCarousel } from '@/components/MediaCarousel';
 import { ErrorState } from '@/components/ErrorState';
 import { ProjectProgressSection } from '@/components/ProjectProgressSection';
 import { ProjectEditSheet } from '@/components/ProjectEditSheet';
-import { VersionPill } from '@/components/VersionPill';
+import { Pill } from '@/components/Pill';
 import { formatCount, timeSince } from '@/utils/format';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { shareProject } from '@/utils/share';
 import { isValidExternalUrl } from '@/utils/validation';
-import { INITIAL_PROJECT_VERSION } from '@/utils/version';
+import { INITIAL_PROJECT_VERSION, formatVersionLabel } from '@/utils/version';
 import type {
   ProjectWithDetails,
   ProjectMedia,
   CommentWithProfile,
   ProjectUpdateWithProfile,
 } from '@/types/database';
-
-type RichProject = ProjectWithDetails & {
-  tech_stack?: string[] | null;
-  collaborators?: Array<ProjectWithDetails['collaborators'][number] & { status?: string }>;
-};
 
 const WIDE_BREAKPOINT = 768;
 const MAX_CONTENT_WIDTH = 1100;
@@ -195,19 +190,11 @@ export default function ProjectDetailScreen() {
     await WebBrowser.openBrowserAsync(url);
   }, []);
 
-  const richProject = project as RichProject | null;
   const tags = project?.project_tags?.map((pt) => pt.tags) ?? [];
-  const collabs = richProject?.collaborators?.filter((c) => c.status !== 'rejected') ?? [];
-  const techStack = (richProject?.tech_stack ?? []).map((item) => item.trim()).filter(Boolean);
+  const collabs = project?.collaborators?.filter((c) => c.status !== 'rejected') ?? [];
+  const techStack = (project?.tech_stack ?? []).map((item) => item.trim()).filter(Boolean);
   const author = project?.profiles;
   const isOwnProject = user?.id === project?.user_id;
-  const latestUpdateAt = updates[0]?.created_at;
-  const lastUpdatedAt =
-    latestUpdateAt &&
-    project &&
-    new Date(latestUpdateAt).getTime() > new Date(project.updated_at).getTime()
-      ? latestUpdateAt
-      : project?.updated_at ?? project?.created_at ?? '';
   const currentVersion = project?.current_version ?? INITIAL_PROJECT_VERSION;
   const handleEditDetails = useCallback(() => {
     if (!id) return;
@@ -300,21 +287,41 @@ export default function ProjectDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.titleTagsRow}>
-          <View style={styles.titleVersionWrap}>
-            <Text style={styles.title}>{project.title}</Text>
-            <VersionPill version={currentVersion} />
-          </View>
-          {tags.length > 0 && (
-            <View style={styles.tagsRow}>
-              {tags.map((tag) => (
-                <TagChip key={tag.id} label={tag.name} />
-              ))}
-            </View>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{project.title}</Text>
+          <Pill label={formatVersionLabel(currentVersion)} />
+          {project.demo_url && (
+            <Pressable
+              onPress={() => openExternalLink(project.demo_url!)}
+              style={styles.linkIcon}
+              hitSlop={12}
+            >
+              <Ionicons name="globe-outline" size={18} color={colors.text.secondary} />
+            </Pressable>
+          )}
+          {project.repo_url && (
+            <Pressable
+              onPress={() => openExternalLink(project.repo_url!)}
+              style={styles.linkIcon}
+              hitSlop={12}
+            >
+              <Ionicons name="logo-github" size={18} color={colors.text.secondary} />
+            </Pressable>
           )}
         </View>
 
         <Text style={styles.description}>{project.description}</Text>
+
+        {(techStack.length > 0 || tags.length > 0) && (
+          <View style={styles.chipRow}>
+            {techStack.map((item) => (
+              <TagChip key={`stack-${item}`} label={item} />
+            ))}
+            {tags.map((tag) => (
+              <TagChip key={`tag-${tag.id}`} label={tag.name} />
+            ))}
+          </View>
+        )}
 
         {!isOwnProject && (
           <Pressable
@@ -327,40 +334,6 @@ export default function ProjectDetailScreen() {
           </Pressable>
         )}
       </View>
-
-      {techStack.length > 0 && (
-        <View style={[styles.stackSection, isWide && styles.sectionWide]}>
-          <Text style={styles.sectionLabel}>Tech Stack</Text>
-          <View style={styles.stackRow}>
-            {techStack.map((item) => (
-              <TagChip key={item} label={item} />
-            ))}
-          </View>
-        </View>
-      )}
-
-      {(project.demo_url || project.repo_url) && (
-        <View style={[styles.linksSection, isWide && styles.sectionWide]}>
-          {project.demo_url && (
-            <Pressable
-              style={styles.linkRow}
-              onPress={() => openExternalLink(project.demo_url!)}
-            >
-              <Ionicons name="globe-outline" size={18} color={colors.accent} />
-              <Text style={styles.linkText} numberOfLines={1}>Live Demo</Text>
-            </Pressable>
-          )}
-          {project.repo_url && (
-            <Pressable
-              style={styles.linkRow}
-              onPress={() => openExternalLink(project.repo_url!)}
-            >
-              <Ionicons name="logo-github" size={18} color={colors.accent} />
-              <Text style={styles.linkText} numberOfLines={1}>Source Code</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
 
       {collabs.length > 0 && (
         <View style={[styles.section, isWide && styles.sectionWide]}>
@@ -391,13 +364,7 @@ export default function ProjectDetailScreen() {
       )}
 
       {(isOwnProject || updates.length > 0) && (
-        <ProjectProgressSection
-          currentVersion={currentVersion}
-          publishedAt={project.created_at}
-          lastUpdatedAt={lastUpdatedAt}
-          updates={updates}
-          isOwnProject={isOwnProject}
-        />
+        <ProjectProgressSection updates={updates} isOwnProject={isOwnProject} />
       )}
 
       <View style={[styles.section, isWide && styles.sectionWide]}>
@@ -605,24 +572,24 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: 0,
   },
   bodyWide: {
     paddingHorizontal: 0,
     paddingTop: 0,
   },
-  titleTagsRow: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.xs,
     flexWrap: 'wrap',
   },
-  titleVersionWrap: {
+  chipRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexShrink: 1,
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: spacing.sm,
   },
   title: {
     fontFamily: fonts.serifBold,
@@ -682,53 +649,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     minWidth: 14,
   },
-  stackSection: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  sectionLabel: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 12,
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.sm,
-  },
-  stackRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-
-  // Links
-  linksSection: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  linkText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.accent,
-    flex: 1,
-  },
-
-  // Tags
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+  linkIcon: {
+    padding: 2,
   },
 
   followBtn: {
@@ -755,7 +677,7 @@ const styles = StyleSheet.create({
   // Sections
   section: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
   },
   sectionTitle: {
     fontFamily: fonts.display,

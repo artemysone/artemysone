@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { createProjectUpdate, getProjectUpdates } from '@/services/projectUpdates';
+import { getProjectUpdates } from '@/services/projectUpdates';
 import { getProject } from '@/services/projects';
 import { getProjectMedia } from '@/services/projectMedia';
 import { toggleLike, toggleFollow, getFollowStatus } from '@/services/feed';
@@ -27,6 +27,7 @@ import { TagChip } from '@/components/TagChip';
 import { MediaCarousel } from '@/components/MediaCarousel';
 import { ErrorState } from '@/components/ErrorState';
 import { ProjectProgressSection } from '@/components/ProjectProgressSection';
+import { ProjectEditSheet } from '@/components/ProjectEditSheet';
 import { VersionPill } from '@/components/VersionPill';
 import { formatCount, timeSince } from '@/utils/format';
 import { colors, spacing, radius } from '@/constants/Colors';
@@ -35,7 +36,6 @@ import { shareProject } from '@/utils/share';
 import { isValidExternalUrl } from '@/utils/validation';
 import { INITIAL_PROJECT_VERSION } from '@/utils/version';
 import type {
-  ProjectBumpType,
   ProjectWithDetails,
   ProjectMedia,
   CommentWithProfile,
@@ -66,10 +66,7 @@ export default function ProjectDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [commentFocused, setCommentFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [updateText, setUpdateText] = useState('');
-  const [updateSubmitting, setUpdateSubmitting] = useState(false);
-  const [updateError, setUpdateError] = useState('');
-  const [bumpType, setBumpType] = useState<ProjectBumpType>('minor');
+  const [editSheetVisible, setEditSheetVisible] = useState(false);
   const [error, setError] = useState(false);
 
   const fetchProject = useCallback(async () => {
@@ -176,31 +173,17 @@ export default function ProjectDetailScreen() {
     [],
   );
 
-  const handlePostUpdate = useCallback(async () => {
-    if (!user || !projectId || !updateText.trim()) return;
+  const handleUpdatePosted = useCallback((newUpdate: ProjectUpdateWithProfile) => {
+    setUpdates((prev) => [newUpdate, ...prev]);
+    setProject((prev) =>
+      prev ? { ...prev, current_version: newUpdate.version } : prev,
+    );
+    setEditSheetVisible(false);
+  }, []);
 
-    setUpdateError('');
-    setUpdateSubmitting(true);
-    try {
-      const newUpdate = await createProjectUpdate({
-        userId: user.id,
-        projectId,
-        body: updateText.trim(),
-        bumpType,
-      });
-      setUpdates((prev) => [newUpdate, ...prev]);
-      setProject((prev) =>
-        prev ? { ...prev, current_version: newUpdate.version } : prev,
-      );
-      setUpdateText('');
-      setBumpType('minor');
-    } catch (err) {
-      console.error('Failed to add project update:', err);
-      setUpdateError('Could not post the update. Try again.');
-    } finally {
-      setUpdateSubmitting(false);
-    }
-  }, [bumpType, projectId, updateText, user]);
+  const closeEditSheet = useCallback(() => {
+    setEditSheetVisible(false);
+  }, []);
 
   const handleShare = useCallback(async () => {
     if (!project) return;
@@ -226,10 +209,15 @@ export default function ProjectDetailScreen() {
       ? latestUpdateAt
       : project?.updated_at ?? project?.created_at ?? '';
   const currentVersion = project?.current_version ?? INITIAL_PROJECT_VERSION;
-  const openEditProject = () => {
+  const handleEditDetails = useCallback(() => {
     if (!id) return;
+    setEditSheetVisible(false);
     router.push({ pathname: '/project/[id]/edit', params: { id } });
-  };
+  }, [id, router]);
+
+  const openEditSheet = useCallback(() => {
+    setEditSheetVisible(true);
+  }, []);
 
   const header = (
     <View style={styles.header}>
@@ -237,7 +225,13 @@ export default function ProjectDetailScreen() {
         <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
       </Pressable>
       <Text style={styles.headerTitle}>Project</Text>
-      <View style={styles.headerSpacer} />
+      {isOwnProject ? (
+        <Pressable onPress={openEditSheet} style={styles.headerAction}>
+          <Ionicons name="create-outline" size={22} color={colors.text.primary} />
+        </Pressable>
+      ) : (
+        <View style={styles.headerSpacer} />
+      )}
     </View>
   );
 
@@ -403,14 +397,6 @@ export default function ProjectDetailScreen() {
           lastUpdatedAt={lastUpdatedAt}
           updates={updates}
           isOwnProject={isOwnProject}
-          updateText={updateText}
-          updateError={updateError}
-          submitting={updateSubmitting}
-          bumpType={bumpType}
-          onChangeBumpType={setBumpType}
-          onChangeUpdateText={setUpdateText}
-          onSubmitUpdate={handlePostUpdate}
-          onEditProject={openEditProject}
         />
       )}
 
@@ -521,6 +507,18 @@ export default function ProjectDetailScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {isOwnProject && user && (
+        <ProjectEditSheet
+          visible={editSheetVisible}
+          onClose={closeEditSheet}
+          currentVersion={currentVersion}
+          projectId={project.id}
+          userId={user.id}
+          onUpdatePosted={handleUpdatePosted}
+          onEditDetails={handleEditDetails}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -582,6 +580,13 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 40,
+  },
+  headerAction: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Loading / Empty

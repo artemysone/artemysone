@@ -1,20 +1,11 @@
-import { memo, useMemo } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { memo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { VersionPill } from '@/components/VersionPill';
 import { colors, radius, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
-import type { ProjectBumpType, ProjectUpdate } from '@/types/database';
+import type { ProjectUpdate } from '@/types/database';
 import { timeSince } from '@/utils/format';
-import { formatVersionLabel, nextVersion } from '@/utils/version';
 
 type ProjectProgressSectionProps = {
   currentVersion: string;
@@ -22,27 +13,7 @@ type ProjectProgressSectionProps = {
   lastUpdatedAt: string;
   updates: Pick<ProjectUpdate, 'id' | 'body' | 'created_at' | 'version'>[];
   isOwnProject: boolean;
-  updateText: string;
-  updateError: string;
-  submitting: boolean;
-  bumpType: ProjectBumpType;
-  onChangeBumpType: (value: ProjectBumpType) => void;
-  onChangeUpdateText: (value: string) => void;
-  onSubmitUpdate: () => void;
-  onEditProject: () => void;
 };
-
-type BumpOption = {
-  value: ProjectBumpType;
-  label: string;
-  hint: string;
-};
-
-const BUMP_OPTIONS: BumpOption[] = [
-  { value: 'patch', label: 'Tweak', hint: 'Small fix or polish' },
-  { value: 'minor', label: 'Update', hint: 'New feature or improvement' },
-  { value: 'major', label: 'Release', hint: 'Big milestone' },
-];
 
 export const ProjectProgressSection = memo(function ProjectProgressSection({
   currentVersion,
@@ -50,43 +21,14 @@ export const ProjectProgressSection = memo(function ProjectProgressSection({
   lastUpdatedAt,
   updates,
   isOwnProject,
-  updateText,
-  updateError,
-  submitting,
-  bumpType,
-  onChangeBumpType,
-  onChangeUpdateText,
-  onSubmitUpdate,
-  onEditProject,
 }: ProjectProgressSectionProps) {
   const hasUpdates = updates.length > 0;
-
-  const resolvedBumpOptions = useMemo(
-    () =>
-      BUMP_OPTIONS.map((option) => ({
-        ...option,
-        resolved: nextVersion(currentVersion, option.value),
-      })),
-    [currentVersion],
-  );
-
-  const previewVersion =
-    resolvedBumpOptions.find((option) => option.value === bumpType)?.resolved ??
-    currentVersion;
 
   return (
     <View style={styles.section}>
       <View style={styles.headerRow}>
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.sectionTitle}>Progress</Text>
-          <VersionPill version={currentVersion} />
-        </View>
-        {isOwnProject && (
-          <Pressable style={styles.editBtn} onPress={onEditProject}>
-            <Ionicons name="create-outline" size={16} color={colors.text.primary} />
-            <Text style={styles.editBtnText}>Edit project</Text>
-          </Pressable>
-        )}
+        <Text style={styles.sectionTitle}>Progress</Text>
+        <VersionPill version={currentVersion} />
       </View>
 
       <View style={styles.metaRow}>
@@ -100,65 +42,11 @@ export const ProjectProgressSection = memo(function ProjectProgressSection({
         </View>
       </View>
 
-      {isOwnProject && (
-        <View style={styles.composer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Share a milestone, ship note, or small win..."
-            placeholderTextColor={colors.text.tertiary}
-            value={updateText}
-            onChangeText={onChangeUpdateText}
-            multiline
-            maxLength={500}
-          />
-
-          <View style={styles.bumpPicker}>
-            {resolvedBumpOptions.map((option) => {
-              const isSelected = option.value === bumpType;
-              return (
-                <Pressable
-                  key={option.value}
-                  style={[styles.bumpOption, isSelected && styles.bumpOptionSelected]}
-                  onPress={() => onChangeBumpType(option.value)}
-                >
-                  <Text
-                    style={[styles.bumpLabel, isSelected && styles.bumpLabelSelected]}
-                  >
-                    {option.label}
-                  </Text>
-                  <Text
-                    style={[styles.bumpVersion, isSelected && styles.bumpVersionSelected]}
-                  >
-                    {formatVersionLabel(option.resolved)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {updateError ? <Text style={styles.errorText}>{updateError}</Text> : null}
-
-          <Pressable
-            style={[styles.submitBtn, (!updateText.trim() || submitting) && styles.submitBtnDisabled]}
-            onPress={onSubmitUpdate}
-            disabled={!updateText.trim() || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.submitBtnText}>
-                Post {formatVersionLabel(previewVersion)}
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      )}
-
       {!hasUpdates && isOwnProject && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>No updates yet</Text>
           <Text style={styles.emptyText}>
-            Post your first milestone to show how this project is evolving.
+            Tap the edit icon in the header to post your first milestone.
           </Text>
         </View>
       )}
@@ -198,32 +86,11 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.sm,
-  },
-  headerTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexShrink: 1,
   },
   sectionTitle: {
     fontFamily: fonts.display,
     fontSize: 18,
-    color: colors.text.primary,
-  },
-  editBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: radius.full,
-    backgroundColor: colors.input,
-  },
-  editBtnText: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 13,
     color: colors.text.primary,
   },
   metaRow: {
@@ -246,79 +113,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemiBold,
     fontSize: 14,
     color: colors.text.primary,
-  },
-  composer: {
-    marginTop: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.input,
-  },
-  input: {
-    minHeight: 88,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.text.primary,
-    textAlignVertical: 'top',
-  },
-  bumpPicker: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  bumpOption: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.borderLight,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-    gap: 2,
-  },
-  bumpOptionSelected: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
-  },
-  bumpLabel: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.text.primary,
-  },
-  bumpLabelSelected: {
-    color: colors.accent,
-  },
-  bumpVersion: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.text.tertiary,
-    letterSpacing: 0.3,
-  },
-  bumpVersionSelected: {
-    color: colors.accent,
-  },
-  errorText: {
-    marginTop: 6,
-    fontFamily: fonts.bodyMedium,
-    fontSize: 12,
-    color: colors.liked,
-  },
-  submitBtn: {
-    alignSelf: 'flex-start',
-    marginTop: spacing.sm,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: radius.full,
-    backgroundColor: colors.accent,
-  },
-  submitBtnDisabled: {
-    opacity: 0.6,
-  },
-  submitBtnText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: '#fff',
   },
   emptyState: {
     marginTop: spacing.md,

@@ -151,6 +151,18 @@ export interface CreateProjectInput {
   collaborators: ProjectCollaboratorInput[];
 }
 
+export interface UpdateProjectInput {
+  title?: string;
+  description?: string;
+  media_url?: string | null;
+  media_type?: 'image' | 'video';
+  media_format?: ProjectMediaFormat;
+  thumbnail_url?: string | null;
+  demo_url?: string | null;
+  repo_url?: string | null;
+  tech_stack?: string[];
+}
+
 export interface UpdateProfileInput {
   name?: string;
   handle?: string;

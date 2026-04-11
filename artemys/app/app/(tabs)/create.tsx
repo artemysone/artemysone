@@ -1,20 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  Keyboard,
-} from 'react-native';
+import { useCallback } from 'react';
+import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   createProject,
@@ -22,656 +9,114 @@ import {
   uploadProjectMedia,
   cleanupUploadedProjectMedia,
 } from '@/services/projects';
-import type { UploadedProjectMediaAsset } from '@/services/projects';
 import { addProjectMedia } from '@/services/projectMedia';
 import { createCollaboratorNotification } from '@/services/notifications';
-import { searchProfiles } from '@/services/profiles';
-import { getTags } from '@/services/tags';
 import { AppBar } from '@/components/AppBar';
-import { MediaUploadArea } from '@/components/MediaUploadArea';
-import { TagChip } from '@/components/TagChip';
-import { CollaboratorChip } from '@/components/CollaboratorChip';
-import { Avatar } from '@/components/Avatar';
-import { colors, spacing, radius } from '@/constants/Colors';
-import { fonts } from '@/constants/Typography';
-import type { Tag, Profile, ProjectMediaFormat } from '@/types/database';
-import { isValidExternalUrl, normalizeExternalUrl } from '@/utils/validation';
-
-interface MediaItem {
-  uri: string;
-  type: 'image' | 'video';
-  durationMs?: number | null;
-}
-
-const MAX_GALLERY_IMAGES = 5;
-const MAX_VIDEO_SECONDS = 10;
-const DEFAULT_PROJECT_FORMAT: ProjectMediaFormat = 'gallery';
-
-const FORMAT_COPY: Record<ProjectMediaFormat, { title: string; subtext: string; helper: string; limit: string }> = {
-  video: {
-    title: 'Demo video',
-    subtext: `One clip up to ${MAX_VIDEO_SECONDS}s`,
-    helper: 'Keep it to one clip and let the work speak for itself.',
-    limit: `Video demo clips are capped at ${MAX_VIDEO_SECONDS} seconds.`,
-  },
-  gallery: {
-    title: 'Image gallery',
-    subtext: `1 to ${MAX_GALLERY_IMAGES} images`,
-    helper: 'Use a short sequence of images to show the project clearly.',
-    limit: `Image galleries can include up to ${MAX_GALLERY_IMAGES} images.`,
-  },
-};
-
-function getMaxMediaItems(format: ProjectMediaFormat) {
-  return format === 'video' ? 1 : MAX_GALLERY_IMAGES;
-}
-
-function parseTechStack(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean),
-    ),
-  );
-}
-
-function getMediaValidationMessage(format: ProjectMediaFormat, items: MediaItem[]): string | null {
-  if (items.length === 0) {
-    return format === 'video'
-      ? `Add a demo video up to ${MAX_VIDEO_SECONDS} seconds.`
-      : `Add between 1 and ${MAX_GALLERY_IMAGES} images.`;
-  }
-
-  if (format === 'video') {
-    if (items.length !== 1) return 'Demo videos must be a single clip.';
-    if (items[0]?.type !== 'video') return 'Use one video clip for this project.';
-    if ((items[0]?.durationMs ?? 0) > MAX_VIDEO_SECONDS * 1000) {
-      return `Keep demo videos to ${MAX_VIDEO_SECONDS} seconds or less.`;
-    }
-    return null;
-  }
-
-  if (items.length > MAX_GALLERY_IMAGES) {
-    return `Image galleries can contain up to ${MAX_GALLERY_IMAGES} images.`;
-  }
-
-  if (items.some((item) => item.type !== 'image')) {
-    return 'Use images only for image galleries.';
-  }
-
-  return null;
-}
-
-interface SelectedCollaborator {
-  user_id: string;
-  name: string;
-  handle: string;
-  avatar_url: string | null;
-  role: string;
-}
+import {
+  ProjectForm,
+  type ProjectFormSubmission,
+} from '@/components/ProjectForm';
+import { colors } from '@/constants/Colors';
+import type { UploadedProjectMediaAsset } from '@/services/projects';
 
 export default function CreateScreen() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Form state
-  const [projectFormat, setProjectFormat] = useState<ProjectMediaFormat>(DEFAULT_PROJECT_FORMAT);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [demoUrl, setDemoUrl] = useState('');
-  const [repoUrl, setRepoUrl] = useState('');
-  const [techStackInput, setTechStackInput] = useState('');
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [collaborators, setCollaborators] = useState<SelectedCollaborator[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const handleSubmit = useCallback(
+    async (values: ProjectFormSubmission) => {
+      if (!user) {
+        throw new Error('Your account is still loading. Try posting again in a moment.');
+      }
 
-  // Tags from DB
-  const [tags, setTags] = useState<Tag[]>([]);
+      const uploadedAssets: UploadedProjectMediaAsset[] = [];
+      let createdProjectId: string | null = null;
 
-  // Collaborator search
-  const [collabQuery, setCollabQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Profile[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [lastCompletedCollabQuery, setLastCompletedCollabQuery] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Load tags on mount
-  useEffect(() => {
-    getTags()
-      .then(setTags)
-      .catch((err) => console.error('Failed to load tags:', err));
-  }, []);
-
-  // Debounced collaborator search
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    const trimmed = collabQuery.trim();
-    if (trimmed.length < 2) {
-      setSearchResults([]);
-      setSearching(false);
-      setLastCompletedCollabQuery('');
-      return;
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      setSearching(true);
       try {
-        const results = await searchProfiles(trimmed, 6);
-        // Filter out current user and already-added collaborators
-        const addedIds = new Set(collaborators.map((c) => c.user_id));
-        setSearchResults(
-          results.filter((p) => p.id !== user?.id && !addedIds.has(p.id)),
-        );
-        setLastCompletedCollabQuery(trimmed);
-      } catch (err) {
-        console.error('Search failed:', err);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [collabQuery, collaborators, user]);
-
-  const trimmedCollabQuery = collabQuery.trim();
-  const showCollabDropdown =
-    searching ||
-    searchResults.length > 0 ||
-    (trimmedCollabQuery.length >= 2 && lastCompletedCollabQuery === trimmedCollabQuery);
-
-  // ---------- Actions ----------
-
-  const launchPicker = useCallback(async (format: ProjectMediaFormat): Promise<MediaItem | null> => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes:
-        format === 'video'
-          ? ImagePicker.MediaTypeOptions.Videos
-          : ImagePicker.MediaTypeOptions.Images,
-      quality: 0.85,
-      videoMaxDuration: MAX_VIDEO_SECONDS,
-    });
-    if (result.canceled || result.assets.length === 0) return null;
-    const asset = result.assets[0];
-    const type: 'image' | 'video' =
-      asset.type === 'video' || (asset.duration != null && asset.duration > 0) ? 'video' : 'image';
-    if (format === 'video') {
-      const durationMs = asset.duration ?? null;
-      if (durationMs != null && durationMs > MAX_VIDEO_SECONDS * 1000) {
-        Alert.alert(
-          'Video too long',
-          `Keep demo videos to ${MAX_VIDEO_SECONDS} seconds or less.`,
-        );
-        return null;
-      }
-      if (type !== 'video') return null;
-      return { uri: asset.uri, type: 'video', durationMs };
-    }
-
-    if (type !== 'image') return null;
-    return { uri: asset.uri, type: 'image' };
-  }, []);
-
-  const pickMedia = useCallback(async () => {
-    if (projectFormat === 'video' && mediaItems.length >= 1) {
-      Alert.alert('Limit reached', `Demo videos are limited to one clip of up to ${MAX_VIDEO_SECONDS} seconds.`);
-      return;
-    }
-
-    if (projectFormat === 'gallery' && mediaItems.length >= MAX_GALLERY_IMAGES) {
-      Alert.alert('Limit reached', `You can add up to ${MAX_GALLERY_IMAGES} images.`);
-      return;
-    }
-
-    const picked = await launchPicker(projectFormat);
-    if (picked) setMediaItems((prev) => [...prev, picked]);
-  }, [mediaItems.length, launchPicker, projectFormat]);
-
-  const removeMedia = useCallback((index: number) => {
-    setMediaItems((prev) => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const replacePrimaryMedia = useCallback(async () => {
-    const picked = await launchPicker(projectFormat);
-    if (picked) setMediaItems((prev) => [picked, ...prev.slice(1)]);
-  }, [launchPicker, projectFormat]);
-
-  const handleFormatChange = useCallback((format: ProjectMediaFormat) => {
-    setProjectFormat(format);
-    setMediaItems([]);
-  }, []);
-
-  const maxMediaItems = getMaxMediaItems(projectFormat);
-
-  const toggleTag = useCallback((tagId: string) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
-    );
-  }, []);
-
-  const addCollaborator = useCallback((profile: Profile) => {
-    setCollaborators((prev) => [
-      ...prev,
-      {
-        user_id: profile.id,
-        name: profile.name,
-        handle: profile.handle,
-        avatar_url: profile.avatar_url,
-        role: '',
-      },
-    ]);
-    setCollabQuery('');
-    setSearchResults([]);
-    Keyboard.dismiss();
-  }, []);
-
-  const removeCollaborator = useCallback((userId: string) => {
-    setCollaborators((prev) => prev.filter((c) => c.user_id !== userId));
-  }, []);
-
-  const resetForm = useCallback(() => {
-    setProjectFormat(DEFAULT_PROJECT_FORMAT);
-    setTitle('');
-    setDescription('');
-    setDemoUrl('');
-    setRepoUrl('');
-    setTechStackInput('');
-    setMediaItems([]);
-    setSelectedTagIds([]);
-    setCollaborators([]);
-    setCollabQuery('');
-    setSearchResults([]);
-    setSubmitError('');
-  }, []);
-
-  const handleSubmit = useCallback(async () => {
-    setSubmitError('');
-    Keyboard.dismiss();
-
-    if (!user) {
-      setSubmitError('Your account is still loading. Try posting again in a moment.');
-      return;
-    }
-
-    // Validate
-    if (!title.trim()) {
-      setSubmitError('Give your project a name.');
-      return;
-    }
-    const mediaValidationMessage = getMediaValidationMessage(projectFormat, mediaItems);
-    if (mediaValidationMessage) {
-      setSubmitError(mediaValidationMessage);
-      return;
-    }
-    const techStack = parseTechStack(techStackInput);
-
-    const normalizedDemoUrl = normalizeExternalUrl(demoUrl);
-    if (normalizedDemoUrl && !isValidExternalUrl(normalizedDemoUrl)) {
-      setSubmitError('Use a full http or https URL for the demo link.');
-      return;
-    }
-
-    const normalizedRepoUrl = normalizeExternalUrl(repoUrl);
-    if (normalizedRepoUrl && !isValidExternalUrl(normalizedRepoUrl)) {
-      setSubmitError('Use a full http or https URL for the repository link.');
-      return;
-    }
-
-    setSubmitting(true);
-    let createdProjectId: string | null = null;
-    const uploadedAssets: UploadedProjectMediaAsset[] = [];
-    try {
-      const project = await createProject({
-        title: title.trim(),
-        description: description.trim(),
-        media_format: projectFormat,
-        demo_url: normalizedDemoUrl || undefined,
-        repo_url: normalizedRepoUrl || undefined,
-        tech_stack: techStack,
-        tag_ids: selectedTagIds,
-        collaborators: collaborators.map((c) => ({
-          user_id: c.user_id,
-          role: c.role,
-        })),
-      });
-      createdProjectId = project.id;
-
-      // Upload the first media item to the project row, then mirror the full set into project_media.
-      const primary = mediaItems[0];
-      const { mediaUrl, storagePath, thumbnailUrl, thumbnailPath } = await uploadProjectMedia(
-        user.id,
-        project.id,
-        primary.uri,
-        primary.type,
-        { storageKey: 'primary', updateProject: true },
-      );
-      uploadedAssets.push({ mediaUrl, storagePath, thumbnailUrl, thumbnailPath });
-
-      const uploadResults: Array<{
-        mediaUrl: string;
-        mediaType: 'image' | 'video';
-        thumbnailUrl?: string;
-        sortOrder: number;
-      }> = [];
-      for (const [index, item] of mediaItems.slice(1).entries()) {
-        const result = await uploadProjectMedia(user.id, project.id, item.uri, item.type, {
-          storageKey: `media-${index + 1}`,
-          updateProject: false,
+        const project = await createProject({
+          title: values.title,
+          description: values.description,
+          media_format: values.projectFormat,
+          demo_url: values.demoUrl || undefined,
+          repo_url: values.repoUrl || undefined,
+          tech_stack: values.techStack,
+          tag_ids: values.selectedTagIds,
+          collaborators: values.collaborators.map((c) => ({
+            user_id: c.user_id,
+            role: c.role,
+          })),
         });
+        createdProjectId = project.id;
 
-        uploadedAssets.push(result);
-        uploadResults.push({
-          mediaUrl: result.mediaUrl,
-          mediaType: item.type,
-          thumbnailUrl: result.thumbnailUrl,
-          sortOrder: index + 1,
-        });
-      }
-
-      await addProjectMedia(project.id, [
-        { mediaUrl, mediaType: primary.type, thumbnailUrl, sortOrder: 0 },
-        ...uploadResults,
-      ]);
-
-      if (collaborators.length > 0) {
-        await Promise.allSettled(
-          collaborators.map((collaborator) =>
-            createCollaboratorNotification(project.id, collaborator.user_id),
-          ),
+        const primary = values.mediaItems[0];
+        const primaryUpload = await uploadProjectMedia(
+          user.id,
+          project.id,
+          primary.uri,
+          primary.type,
+          { storageKey: 'primary', updateProject: true },
         );
-      }
+        uploadedAssets.push(primaryUpload);
 
-      resetForm();
-      router.navigate('/(tabs)/profile');
-    } catch (err: unknown) {
-      await cleanupUploadedProjectMedia(uploadedAssets).catch(() => {});
-      if (createdProjectId) {
-        try {
-          await deleteProject(createdProjectId);
-        } catch (cleanupError) {
-          console.error('Failed to roll back incomplete project creation:', cleanupError);
+        const uploadResults: Array<{
+          mediaUrl: string;
+          mediaType: 'image' | 'video';
+          thumbnailUrl?: string;
+          sortOrder: number;
+        }> = [];
+        for (const [index, item] of values.mediaItems.slice(1).entries()) {
+          const result = await uploadProjectMedia(user.id, project.id, item.uri, item.type, {
+            storageKey: `media-${index + 1}`,
+            updateProject: false,
+          });
+
+          uploadedAssets.push(result);
+          uploadResults.push({
+            mediaUrl: result.mediaUrl,
+            mediaType: item.type,
+            thumbnailUrl: result.thumbnailUrl,
+            sortOrder: index + 1,
+          });
         }
-      }
-      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [
-    user,
-    title,
-    description,
-    demoUrl,
-    repoUrl,
-    techStackInput,
-    projectFormat,
-    mediaItems,
-    selectedTagIds,
-    collaborators,
-    resetForm,
-    router,
-  ]);
 
-  // ---------- Render ----------
+        await addProjectMedia(project.id, [
+          {
+            mediaUrl: primaryUpload.mediaUrl,
+            mediaType: primary.type,
+            thumbnailUrl: primaryUpload.thumbnailUrl,
+            sortOrder: 0,
+          },
+          ...uploadResults,
+        ]);
+
+        if (values.collaborators.length > 0) {
+          await Promise.allSettled(
+            values.collaborators.map((collaborator) =>
+              createCollaboratorNotification(project.id, collaborator.user_id),
+            ),
+          );
+        }
+
+        router.navigate('/(tabs)/profile');
+      } catch (err: unknown) {
+        await cleanupUploadedProjectMedia(uploadedAssets).catch(() => {});
+        if (createdProjectId) {
+          try {
+            await deleteProject(createdProjectId);
+          } catch (cleanupError) {
+            console.error('Failed to roll back incomplete project creation:', cleanupError);
+          }
+        }
+        throw err instanceof Error ? err : new Error('Something went wrong. Try again.');
+      }
+    },
+    [router, user],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppBar title="artemys" />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="always"
-      >
-        {/* Format */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Project Format</Text>
-          <View style={styles.formatToggle}>
-            <Pressable
-              style={[styles.formatOption, projectFormat === 'video' && styles.formatOptionActive]}
-              onPress={() => handleFormatChange('video')}
-            >
-              <Text
-                style={[
-                  styles.formatOptionText,
-                  projectFormat === 'video' && styles.formatOptionTextActive,
-                ]}
-              >
-                {FORMAT_COPY.video.title}
-              </Text>
-              <Text style={styles.formatOptionSubtext}>{FORMAT_COPY.video.subtext}</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.formatOption, projectFormat === 'gallery' && styles.formatOptionActive]}
-              onPress={() => handleFormatChange('gallery')}
-            >
-              <Text
-                style={[
-                  styles.formatOptionText,
-                  projectFormat === 'gallery' && styles.formatOptionTextActive,
-                ]}
-              >
-                {FORMAT_COPY.gallery.title}
-              </Text>
-              <Text style={styles.formatOptionSubtext}>{FORMAT_COPY.gallery.subtext}</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.helperText}>{FORMAT_COPY[projectFormat].helper}</Text>
-        </View>
-
-        {/* Media upload */}
-        <View style={styles.field}>
-          {mediaItems.length === 0 ? (
-            <MediaUploadArea onPress={pickMedia} />
-          ) : (
-            <>
-              <MediaUploadArea
-                onPress={replacePrimaryMedia}
-                selectedUri={mediaItems[0].uri}
-                mediaType={mediaItems[0].type}
-              />
-              {/* Thumbnail strip for multi-media */}
-              <View style={styles.mediaThumbs}>
-                {mediaItems.slice(1).map((item, idx) => (
-                  <View key={`media-${idx + 1}`} style={styles.thumbContainer}>
-                    <Image
-                      source={{ uri: item.uri }}
-                      style={styles.thumbImage}
-                      contentFit="cover"
-                    />
-                    <Pressable
-                      style={styles.thumbRemove}
-                      onPress={() => removeMedia(idx + 1)}
-                    >
-                      <Ionicons name="close-circle" size={20} color="#fff" />
-                    </Pressable>
-                    {item.type === 'video' && (
-                      <View style={styles.thumbVideoBadge}>
-                        <Ionicons name="videocam" size={10} color="#fff" />
-                      </View>
-                    )}
-                  </View>
-                ))}
-                {mediaItems.length < maxMediaItems && (
-                  <Pressable style={styles.addMoreBtn} onPress={pickMedia}>
-                    <Ionicons name="add" size={24} color={colors.text.tertiary} />
-                  </Pressable>
-                )}
-              </View>
-            </>
-          )}
-          <Text style={styles.helperText}>{FORMAT_COPY[projectFormat].limit}</Text>
-        </View>
-
-        {/* Title */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Project Title</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="What did you build?"
-            placeholderTextColor={colors.text.tertiary}
-            value={title}
-            onChangeText={setTitle}
-            maxLength={100}
-          />
-        </View>
-
-        {/* Description */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textarea]}
-            placeholder="Tell the story behind this project..."
-            placeholderTextColor={colors.text.tertiary}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* Demo URL */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Demo URL</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://your-project.com"
-            placeholderTextColor={colors.text.tertiary}
-            value={demoUrl}
-            onChangeText={setDemoUrl}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
-        </View>
-
-        {/* Repository URL */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Repository URL</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://github.com/you/project"
-            placeholderTextColor={colors.text.tertiary}
-            value={repoUrl}
-            onChangeText={setRepoUrl}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
-        </View>
-
-        {/* Tech stack */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Tech Stack</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="React Native, Supabase, TypeScript"
-            placeholderTextColor={colors.text.tertiary}
-            value={techStackInput}
-            onChangeText={setTechStackInput}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Text style={styles.helperText}>
-            Separate technologies with commas. Keep it factual and specific.
-          </Text>
-        </View>
-
-        {/* Tags */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Tags</Text>
-          <View style={styles.tagsRow}>
-            {tags.map((tag) => (
-              <TagChip
-                key={tag.id}
-                label={tag.name}
-                selected={selectedTagIds.includes(tag.id)}
-                onPress={() => toggleTag(tag.id)}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Collaborators */}
-        <View style={styles.field}>
-          <Text style={styles.label}>Collaborators</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Search people to tag..."
-            placeholderTextColor={colors.text.tertiary}
-            value={collabQuery}
-            onChangeText={setCollabQuery}
-          />
-
-          {/* Search results dropdown */}
-          {showCollabDropdown && (
-            <View style={styles.searchDropdown}>
-              {searching && searchResults.length === 0 ? (
-                <View style={styles.searchLoading}>
-                  <ActivityIndicator size="small" color={colors.accent} />
-                </View>
-              ) : searchResults.length === 0 ? (
-                <View style={styles.searchEmpty}>
-                  <Text style={styles.searchEmptyTitle}>No results found</Text>
-                  <Text style={styles.searchEmptyText}>Try a full name or handle</Text>
-                </View>
-              ) : (
-                searchResults.map((profile) => (
-                  <Pressable
-                    key={profile.id}
-                    style={styles.searchResult}
-                    onPress={() => addCollaborator(profile)}
-                  >
-                    <Avatar uri={profile.avatar_url} name={profile.name} size="sm" />
-                    <View style={styles.searchResultInfo}>
-                      <Text style={styles.searchResultName}>{profile.name}</Text>
-                      <Text style={styles.searchResultHandle}>@{profile.handle}</Text>
-                    </View>
-                  </Pressable>
-                ))
-              )}
-            </View>
-          )}
-
-          {/* Selected collaborators */}
-          {collaborators.length > 0 && (
-            <View style={styles.taggedRow}>
-              {collaborators.map((collab) => (
-                <CollaboratorChip
-                  key={collab.user_id}
-                  name={collab.name}
-                  avatarUrl={collab.avatar_url}
-                  onRemove={() => removeCollaborator(collab.user_id)}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-
-        {submitError ? (
-          <View style={styles.submitErrorBox}>
-            <Text style={styles.submitErrorText}>{submitError}</Text>
-          </View>
-        ) : null}
-
-        {/* Submit */}
-        <Pressable
-          style={[styles.postBtn, submitting && styles.postBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.postBtnText}>Post Project</Text>
-          )}
-        </Pressable>
-      </ScrollView>
+      <ProjectForm submitLabel="Post Project" onSubmit={handleSubmit} />
     </SafeAreaView>
   );
 }
@@ -680,205 +125,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingTop: 0,
-  },
-  field: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 13,
-    color: colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.sm,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 10,
-    backgroundColor: colors.card,
-    padding: 13,
-    fontFamily: fonts.body,
-    fontSize: 15,
-    color: colors.text.primary,
-  },
-  textarea: {
-    height: 100,
-    paddingTop: 13,
-  },
-  formatToggle: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  formatOption: {
-    flex: 1,
-    padding: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  formatOptionActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
-  },
-  formatOptionText: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.text.primary,
-    marginBottom: 4,
-  },
-  formatOptionTextActive: {
-    color: colors.accent,
-  },
-  formatOptionSubtext: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 16,
-  },
-  helperText: {
-    marginTop: spacing.sm,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.text.secondary,
-    lineHeight: 18,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  taggedRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: 10,
-  },
-  searchDropdown: {
-    backgroundColor: colors.card,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 10,
-    marginTop: spacing.sm,
-    overflow: 'hidden',
-  },
-  searchLoading: {
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  searchEmpty: {
-    paddingHorizontal: 13,
-    paddingVertical: spacing.md,
-  },
-  searchEmptyTitle: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.text.secondary,
-  },
-  searchEmptyText: {
-    marginTop: 4,
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.text.tertiary,
-    lineHeight: 18,
-  },
-  searchResult: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  searchResultInfo: {
-    flex: 1,
-  },
-  searchResultName: {
-    fontFamily: fonts.bodySemiBold,
-    fontSize: 14,
-    color: colors.text.primary,
-  },
-  searchResultHandle: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: colors.text.secondary,
-    marginTop: 1,
-  },
-  submitErrorBox: {
-    marginBottom: spacing.md,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    backgroundColor: '#FDF1ED',
-    borderWidth: 1,
-    borderColor: '#F3D2C7',
-  },
-  submitErrorText: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.accent,
-    lineHeight: 18,
-  },
-  mediaThumbs: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  thumbContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.sm,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  thumbImage: {
-    width: '100%',
-    height: '100%',
-  },
-  thumbRemove: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-  },
-  thumbVideoBadge: {
-    position: 'absolute',
-    bottom: 3,
-    left: 3,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 4,
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-  },
-  addMoreBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.md,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  postBtnDisabled: {
-    opacity: 0.6,
-  },
-  postBtnText: {
-    fontFamily: fonts.display,
-    fontSize: 16,
-    color: '#fff',
   },
 });

@@ -93,6 +93,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="project/[id]/edit"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="[handle]"
         options={{
           href: null,

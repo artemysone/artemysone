@@ -34,6 +34,24 @@ export async function addProjectMedia(
   if (error) throw error;
 }
 
+export async function replaceProjectMedia(
+  projectId: string,
+  items: {
+    mediaUrl: string;
+    mediaType: 'image' | 'video';
+    thumbnailUrl?: string;
+    sortOrder: number;
+  }[],
+): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('project_media')
+    .delete()
+    .eq('project_id', projectId);
+  if (deleteError) throw deleteError;
+
+  await addProjectMedia(projectId, items);
+}
+
 export async function deleteProjectMedia(mediaId: string): Promise<void> {
   const { error } = await supabase
     .from('project_media')

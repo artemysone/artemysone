@@ -1,7 +1,13 @@
 import { Platform } from 'react-native';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 import { supabase } from '@/lib/supabase';
-import type { CreateProjectInput, Project, ProjectRelationsRow, ProjectWithDetails } from '@/types/database';
+import type {
+  CreateProjectInput,
+  Project,
+  ProjectRelationsRow,
+  ProjectWithDetails,
+  UpdateProjectInput,
+} from '@/types/database';
 import { getFileExtension, getMediaContentType, readUriAsBlob, extractVideoThumbnailWeb } from '@/utils/media';
 import { normalizeExternalUrl } from '@/utils/validation';
 
@@ -22,6 +28,14 @@ function normalizeTechStack(stack: string[]): string[] {
   );
 }
 
+function normalizeOptionalExternalUrl(value?: string | null): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  const trimmed = value.trim();
+  return trimmed ? normalizeExternalUrl(trimmed) : null;
+}
+
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const { data: project, error } = await supabase.rpc('create_project_with_relations', {
     p_title: input.title.trim(),
@@ -39,6 +53,38 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   if (error) throw error;
   if (!project) throw new Error('Project creation returned no data.');
   return project as Project;
+}
+
+export async function updateProject(projectId: string, input: UpdateProjectInput): Promise<Project> {
+  const updates: Partial<Project> = {};
+
+  if (input.title !== undefined) updates.title = input.title.trim();
+  if (input.description !== undefined) updates.description = input.description.trim();
+  if (input.media_url !== undefined) updates.media_url = input.media_url;
+  if (input.media_type !== undefined) updates.media_type = input.media_type;
+  if (input.media_format !== undefined) updates.media_format = input.media_format;
+  if (input.thumbnail_url !== undefined) updates.thumbnail_url = input.thumbnail_url;
+  if (input.tech_stack !== undefined) updates.tech_stack = normalizeTechStack(input.tech_stack);
+
+  const demoUrl = normalizeOptionalExternalUrl(input.demo_url);
+  if (demoUrl !== undefined) updates.demo_url = demoUrl;
+
+  const repoUrl = normalizeOptionalExternalUrl(input.repo_url);
+  if (repoUrl !== undefined) updates.repo_url = repoUrl;
+
+  if (Object.keys(updates).length === 0) {
+    throw new Error('No project fields provided for update.');
+  }
+
+  const { data, error } = await supabase
+    .from('projects')
+    .update(updates)
+    .eq('id', projectId)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Project update returned no data.');
+  return data as Project;
 }
 
 export async function getProject(projectId: string, currentUserId?: string): Promise<ProjectWithDetails | null> {

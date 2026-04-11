@@ -4,6 +4,7 @@
 
 export type ProjectMediaFormat = 'video' | 'gallery';
 export type CollaboratorStatus = 'pending' | 'accepted' | 'rejected';
+export type ProjectBumpType = 'patch' | 'minor' | 'major';
 
 export interface Profile {
   id: string;
@@ -27,6 +28,7 @@ export interface Project {
   demo_url: string | null;
   repo_url: string | null;
   tech_stack: string[];
+  current_version: string;
   created_at: string;
   updated_at: string;
 }
@@ -93,6 +95,16 @@ export interface ProjectMedia {
   created_at: string;
 }
 
+export interface ProjectUpdate {
+  id: string;
+  project_id: string;
+  user_id: string;
+  body: string;
+  version: string;
+  bump_type: ProjectBumpType;
+  created_at: string;
+}
+
 // ============================================================
 // Composite types (joined queries used by the UI)
 // ============================================================
@@ -107,6 +119,10 @@ export interface NotificationWithActor extends Notification {
 }
 
 export interface CollaboratorWithProfile extends Collaborator {
+  profiles: Profile;
+}
+
+export interface ProjectUpdateWithProfile extends ProjectUpdate {
   profiles: Profile;
 }
 

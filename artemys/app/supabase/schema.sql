@@ -28,6 +28,7 @@ create table public.projects (
   media_url text,
   media_type text default 'image' not null check (media_type in ('image', 'video')),
   thumbnail_url text,
+  current_version text default '0.1.0' not null,
   created_at timestamptz default now() not null,
   updated_at timestamptz default now() not null,
 
@@ -85,6 +86,20 @@ create table public.comments (
   constraint comment_text_not_blank check (char_length(btrim(text)) > 0)
 );
 
+-- Project updates (append-only progress entries)
+create table public.project_updates (
+  id uuid default gen_random_uuid() primary key,
+  project_id uuid references public.projects(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  body text default '' not null,
+  version text default '0.1.0' not null,
+  bump_type text not null,
+  created_at timestamptz default now() not null,
+
+  constraint project_updates_body_not_blank check (char_length(btrim(body)) > 0),
+  constraint project_updates_bump_type_check check (bump_type in ('patch', 'minor', 'major'))
+);
+
 -- ============================================================
 -- INDEXES
 -- ============================================================
@@ -96,6 +111,8 @@ create index idx_collaborators_user_id on public.collaborators(user_id);
 create index idx_follows_following_id on public.follows(following_id);
 create index idx_likes_project_id on public.likes(project_id);
 create index idx_comments_project_id on public.comments(project_id);
+create index idx_project_updates_project_id_created_at on public.project_updates(project_id, created_at desc);
+create index idx_project_updates_user_id_created_at on public.project_updates(user_id, created_at desc);
 
 -- ============================================================
 -- UPDATED_AT TRIGGER
@@ -136,6 +153,68 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function public.normalize_project_update_fields()
+returns trigger as $$
+begin
+  new.body = btrim(new.body);
+  return new;
+end;
+$$ language plpgsql;
+
+create or replace function public.apply_project_update_version()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  current text;
+  parts text[];
+  major_part int;
+  minor_part int;
+  patch_part int;
+begin
+  new.body = btrim(new.body);
+
+  select current_version into current
+  from public.projects
+  where id = new.project_id
+  for update;
+
+  if current is null then
+    current := '0.1.0';
+  end if;
+
+  parts := string_to_array(current, '.');
+  if array_length(parts, 1) <> 3 then
+    raise exception 'Invalid current_version for project %: %', new.project_id, current;
+  end if;
+
+  major_part := parts[1]::int;
+  minor_part := parts[2]::int;
+  patch_part := parts[3]::int;
+
+  if new.bump_type = 'major' then
+    major_part := major_part + 1;
+    minor_part := 0;
+    patch_part := 0;
+  elsif new.bump_type = 'minor' then
+    minor_part := minor_part + 1;
+    patch_part := 0;
+  else
+    patch_part := patch_part + 1;
+  end if;
+
+  new.version := format('%s.%s.%s', major_part, minor_part, patch_part);
+
+  update public.projects
+    set current_version = new.version
+    where id = new.project_id;
+
+  return new;
+end;
+$$;
+
 create trigger on_profiles_updated
   before update on public.profiles
   for each row execute function public.handle_updated_at();
@@ -155,6 +234,14 @@ create trigger on_projects_normalized
 create trigger on_comments_normalized
   before insert or update on public.comments
   for each row execute function public.normalize_comment_fields();
+
+create trigger on_project_updates_versioned
+  before insert on public.project_updates
+  for each row execute function public.apply_project_update_version();
+
+create trigger on_project_updates_normalized
+  before update on public.project_updates
+  for each row execute function public.normalize_project_update_fields();
 
 -- ============================================================
 -- AUTO-CREATE PROFILE ON SIGNUP
@@ -334,6 +421,7 @@ alter table public.collaborators enable row level security;
 alter table public.follows enable row level security;
 alter table public.likes enable row level security;
 alter table public.comments enable row level security;
+alter table public.project_updates enable row level security;
 
 -- Profiles: anyone can read, users can update their own
 create policy "Profiles are viewable by everyone"
@@ -420,6 +508,24 @@ create policy "Authenticated users can comment"
 
 create policy "Users can delete their own comments"
   on public.comments for delete using (auth.uid() = user_id);
+
+-- Project updates: anyone can read, project owners and authors can manage
+create policy "Project updates are viewable by everyone"
+  on public.project_updates for select using (true);
+
+create policy "Project owners and authors can create project updates"
+  on public.project_updates for insert
+  with check (
+    auth.uid() = user_id
+    and auth.uid() = (select user_id from public.projects where id = project_id)
+  );
+
+create policy "Project owners and authors can delete project updates"
+  on public.project_updates for delete
+  using (
+    auth.uid() = user_id
+    or auth.uid() = (select user_id from public.projects where id = project_id)
+  );
 
 -- ============================================================
 -- SEED DATA

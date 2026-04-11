@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { createProjectUpdate, getProjectUpdates } from '@/services/projectUpdates';
 import { getProject } from '@/services/projects';
 import { getProjectMedia } from '@/services/projectMedia';
 import { toggleLike, toggleFollow, getFollowStatus } from '@/services/feed';
@@ -25,12 +26,21 @@ import { Avatar } from '@/components/Avatar';
 import { TagChip } from '@/components/TagChip';
 import { MediaCarousel } from '@/components/MediaCarousel';
 import { ErrorState } from '@/components/ErrorState';
+import { ProjectProgressSection } from '@/components/ProjectProgressSection';
+import { VersionPill } from '@/components/VersionPill';
 import { formatCount, timeSince } from '@/utils/format';
 import { colors, spacing, radius } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 import { shareProject } from '@/utils/share';
 import { isValidExternalUrl } from '@/utils/validation';
-import type { ProjectWithDetails, ProjectMedia, CommentWithProfile } from '@/types/database';
+import { INITIAL_PROJECT_VERSION } from '@/utils/version';
+import type {
+  ProjectBumpType,
+  ProjectWithDetails,
+  ProjectMedia,
+  CommentWithProfile,
+  ProjectUpdateWithProfile,
+} from '@/types/database';
 
 type RichProject = ProjectWithDetails & {
   tech_stack?: string[] | null;
@@ -50,28 +60,33 @@ export default function ProjectDetailScreen() {
   const [project, setProject] = useState<ProjectWithDetails | null>(null);
   const [mediaItems, setMediaItems] = useState<ProjectMedia[]>([]);
   const [comments, setComments] = useState<CommentWithProfile[]>([]);
+  const [updates, setUpdates] = useState<ProjectUpdateWithProfile[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [commentFocused, setCommentFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [updateText, setUpdateText] = useState('');
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
+  const [updateError, setUpdateError] = useState('');
+  const [bumpType, setBumpType] = useState<ProjectBumpType>('minor');
   const [error, setError] = useState(false);
-
-  // ---------- Load data ----------
 
   const fetchProject = useCallback(async () => {
     if (!id) return;
     setError(false);
     setLoading(true);
     try {
-      const [projectData, commentsData, mediaData] = await Promise.all([
+      const [projectData, commentsData, mediaData, updatesData] = await Promise.all([
         getProject(id, user?.id),
         getComments(id),
         getProjectMedia(id),
+        getProjectUpdates(id),
       ]);
       setProject(projectData);
       setComments(commentsData);
       setMediaItems(mediaData);
+      setUpdates(updatesData);
 
       if (user && projectData) {
         const following = await getFollowStatus(user.id, projectData.profiles.id);
@@ -88,8 +103,6 @@ export default function ProjectDetailScreen() {
   useEffect(() => {
     fetchProject();
   }, [fetchProject]);
-
-  // ---------- Actions ----------
 
   const projectId = project?.id;
   const authorId = project?.profiles?.id;
@@ -138,7 +151,6 @@ export default function ProjectDetailScreen() {
       const newComment = await addComment(user.id, id, commentText.trim());
       setComments((prev) => [...prev, newComment]);
       setCommentText('');
-      // Update comment count
       setProject((prev) =>
         prev ? { ...prev, comment_count: prev.comment_count + 1 } : prev,
       );
@@ -164,6 +176,32 @@ export default function ProjectDetailScreen() {
     [],
   );
 
+  const handlePostUpdate = useCallback(async () => {
+    if (!user || !projectId || !updateText.trim()) return;
+
+    setUpdateError('');
+    setUpdateSubmitting(true);
+    try {
+      const newUpdate = await createProjectUpdate({
+        userId: user.id,
+        projectId,
+        body: updateText.trim(),
+        bumpType,
+      });
+      setUpdates((prev) => [newUpdate, ...prev]);
+      setProject((prev) =>
+        prev ? { ...prev, current_version: newUpdate.version } : prev,
+      );
+      setUpdateText('');
+      setBumpType('minor');
+    } catch (err) {
+      console.error('Failed to add project update:', err);
+      setUpdateError('Could not post the update. Try again.');
+    } finally {
+      setUpdateSubmitting(false);
+    }
+  }, [bumpType, projectId, updateText, user]);
+
   const handleShare = useCallback(async () => {
     if (!project) return;
     await shareProject(project.title, project.profiles.handle, project.id);
@@ -174,16 +212,24 @@ export default function ProjectDetailScreen() {
     await WebBrowser.openBrowserAsync(url);
   }, []);
 
-  // ---------- Derived ----------
-
   const richProject = project as RichProject | null;
   const tags = project?.project_tags?.map((pt) => pt.tags) ?? [];
   const collabs = richProject?.collaborators?.filter((c) => c.status !== 'rejected') ?? [];
   const techStack = (richProject?.tech_stack ?? []).map((item) => item.trim()).filter(Boolean);
   const author = project?.profiles;
   const isOwnProject = user?.id === project?.user_id;
-
-  // ---------- Render ----------
+  const latestUpdateAt = updates[0]?.created_at;
+  const lastUpdatedAt =
+    latestUpdateAt &&
+    project &&
+    new Date(latestUpdateAt).getTime() > new Date(project.updated_at).getTime()
+      ? latestUpdateAt
+      : project?.updated_at ?? project?.created_at ?? '';
+  const currentVersion = project?.current_version ?? INITIAL_PROJECT_VERSION;
+  const openEditProject = () => {
+    if (!id) return;
+    router.push({ pathname: '/project/[id]/edit', params: { id } });
+  };
 
   const header = (
     <View style={styles.header}>
@@ -229,7 +275,6 @@ export default function ProjectDetailScreen() {
   const detailsContent = (
     <>
       <View style={[styles.body, isWide && styles.bodyWide]}>
-        {/* Author + Actions row */}
         <View style={styles.authorActionsRow}>
           <Pressable
             style={styles.authorRow}
@@ -261,9 +306,11 @@ export default function ProjectDetailScreen() {
           </View>
         </View>
 
-        {/* Title + Tags row */}
         <View style={styles.titleTagsRow}>
-          <Text style={styles.title}>{project.title}</Text>
+          <View style={styles.titleVersionWrap}>
+            <Text style={styles.title}>{project.title}</Text>
+            <VersionPill version={currentVersion} />
+          </View>
           {tags.length > 0 && (
             <View style={styles.tagsRow}>
               {tags.map((tag) => (
@@ -275,7 +322,6 @@ export default function ProjectDetailScreen() {
 
         <Text style={styles.description}>{project.description}</Text>
 
-        {/* Follow */}
         {!isOwnProject && (
           <Pressable
             style={[styles.followBtn, isFollowing && styles.followBtnActive]}
@@ -299,7 +345,6 @@ export default function ProjectDetailScreen() {
         </View>
       )}
 
-      {/* Links */}
       {(project.demo_url || project.repo_url) && (
         <View style={[styles.linksSection, isWide && styles.sectionWide]}>
           {project.demo_url && (
@@ -323,7 +368,6 @@ export default function ProjectDetailScreen() {
         </View>
       )}
 
-      {/* Collaborators */}
       {collabs.length > 0 && (
         <View style={[styles.section, isWide && styles.sectionWide]}>
           <Text style={styles.sectionTitle}>Collaborators</Text>
@@ -352,7 +396,24 @@ export default function ProjectDetailScreen() {
         </View>
       )}
 
-      {/* Comments */}
+      {(isOwnProject || updates.length > 0) && (
+        <ProjectProgressSection
+          currentVersion={currentVersion}
+          publishedAt={project.created_at}
+          lastUpdatedAt={lastUpdatedAt}
+          updates={updates}
+          isOwnProject={isOwnProject}
+          updateText={updateText}
+          updateError={updateError}
+          submitting={updateSubmitting}
+          bumpType={bumpType}
+          onChangeBumpType={setBumpType}
+          onChangeUpdateText={setUpdateText}
+          onSubmitUpdate={handlePostUpdate}
+          onEditProject={openEditProject}
+        />
+      )}
+
       <View style={[styles.section, isWide && styles.sectionWide]}>
         <Text style={styles.sectionTitle}>
           Comments{comments.length > 0 ? ` (${comments.length})` : ''}
@@ -433,7 +494,6 @@ export default function ProjectDetailScreen() {
           )}
         </ScrollView>
 
-        {/* Comment Input */}
         <View style={[styles.commentInputContainer, isWide && styles.commentInputWide]}>
           <View style={[styles.commentInputRow, commentFocused && styles.commentInputRowFocused]}>
             <TextInput
@@ -552,6 +612,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.xs,
     flexWrap: 'wrap',
+  },
+  titleVersionWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 1,
   },
   title: {
     fontFamily: fonts.serifBold,
@@ -822,8 +888,6 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     paddingVertical: 10,
     maxHeight: 100,
-    // @ts-ignore — web-only property
-    outlineStyle: 'none',
   },
   sendBtn: {
     width: 32,

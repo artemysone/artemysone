@@ -8,6 +8,8 @@ import { fonts } from '@/constants/Typography';
 import { formatCount, timeSince } from '@/utils/format';
 import type { ProjectWithDetails } from '@/types/database';
 
+const FEED_CONTENT_PAD = spacing.lg;
+
 interface ProjectCardProps {
   project: ProjectWithDetails;
   isFollowing?: boolean;
@@ -138,8 +140,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: FEED_CONTENT_PAD,
+    paddingVertical: 8,
   },
   authorTap: {
     flexDirection: 'row',
@@ -169,8 +171,8 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingTop: 10,
+    paddingHorizontal: FEED_CONTENT_PAD,
+    paddingTop: 8,
     gap: 10,
   },
   actionBtn: {
@@ -186,8 +188,8 @@ const styles = StyleSheet.create({
     minWidth: 14,
   },
   captionWrap: {
-    paddingHorizontal: 14,
-    marginTop: 8,
+    paddingHorizontal: FEED_CONTENT_PAD,
+    marginTop: 6,
   },
   title: {
     fontFamily: fonts.serif,
@@ -204,8 +206,8 @@ const styles = StyleSheet.create({
   collabRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    marginTop: 10,
+    paddingHorizontal: FEED_CONTENT_PAD,
+    marginTop: 8,
     paddingBottom: 4,
     gap: 8,
   },

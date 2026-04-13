@@ -143,11 +143,9 @@ export const ProjectCard = memo(function ProjectCard({
           <Text style={styles.description}>
             {displayDescription}
             {isCollapsed && (
-              <Text
-                style={styles.seeMoreLink}
-                onPress={() => setIsDescriptionExpanded(true)}
-              >
-                {SEE_MORE_LABEL}
+              <Text onPress={() => setIsDescriptionExpanded(true)}>
+                <Text style={styles.ellipsis}>{'… '}</Text>
+                <Text style={styles.seeMoreLink}>See more</Text>
               </Text>
             )}
             {canExpandDescription && isDescriptionExpanded && (
@@ -271,6 +269,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text.secondary,
     lineHeight: 20,
+  },
+  ellipsis: {
+    fontSize: 14,
+    color: colors.text.primary,
   },
   seeMoreLink: {
     fontFamily: fonts.bodySemiBold,

@@ -1,5 +1,5 @@
-import { memo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, type LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from './Avatar';
 import { ProjectMediaPreview } from './ProjectMediaPreview';
@@ -9,6 +9,10 @@ import { formatCount, timeSince } from '@/utils/format';
 import type { ProjectWithDetails } from '@/types/database';
 
 const FEED_CONTENT_PAD = spacing.lg;
+const DESCRIPTION_LINE_HEIGHT = 20;
+const MAX_COLLAPSED_LINES = 2;
+const AVG_CHAR_WIDTH = 7.2; // DM Sans 14px approximate average
+const SEE_MORE_LABEL = '… See more';
 
 interface ProjectCardProps {
   project: ProjectWithDetails;
@@ -29,9 +33,39 @@ export const ProjectCard = memo(function ProjectCard({
   onAuthorPress,
 }: ProjectCardProps) {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [canExpandDescription, setCanExpandDescription] = useState(false);
+  const descriptionWidthRef = useRef(0);
   const { profiles: author } = project;
   const acceptedCollabs =
     project.collaborators?.filter((c) => c.status === 'accepted') ?? [];
+
+  useEffect(() => {
+    setIsDescriptionExpanded(false);
+    setCanExpandDescription(false);
+  }, [project.id, project.description]);
+
+  const handleDescriptionLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    descriptionWidthRef.current = width;
+    setCanExpandDescription(height > DESCRIPTION_LINE_HEIGHT * MAX_COLLAPSED_LINES);
+  }, []);
+
+  const isCollapsed = canExpandDescription && !isDescriptionExpanded;
+
+  const displayDescription = useMemo(() => {
+    if (!isCollapsed || !project.description || descriptionWidthRef.current === 0) {
+      return project.description;
+    }
+    const charsPerLine = Math.floor(descriptionWidthRef.current / AVG_CHAR_WIDTH);
+    const maxChars = charsPerLine + Math.max(0, charsPerLine - SEE_MORE_LABEL.length);
+
+    if (project.description.length <= maxChars) return project.description;
+
+    let cut = project.description.lastIndexOf(' ', maxChars);
+    if (cut < maxChars * 0.7) cut = maxChars;
+    return project.description.slice(0, cut).trimEnd();
+  }, [isCollapsed, project.description]);
 
   return (
     <View style={styles.card}>
@@ -64,16 +98,9 @@ export const ProjectCard = memo(function ProjectCard({
         onPress={onPress}
       />
 
-      {/* Caption + Actions row */}
+      {/* Title + Actions row */}
       <View style={styles.captionActionsRow}>
-        <View style={styles.captionWrap}>
-          <Text style={styles.title}>{project.title}</Text>
-          {!!project.description && (
-            <Text style={styles.description} numberOfLines={2}>
-              {project.description}
-            </Text>
-          )}
-        </View>
+        <Text style={styles.title} numberOfLines={1}>{project.title}</Text>
         <View style={styles.actions}>
           <Pressable style={styles.actionBtn} onPress={onLike}>
             <Ionicons
@@ -104,6 +131,36 @@ export const ProjectCard = memo(function ProjectCard({
           </Pressable>
         </View>
       </View>
+
+      {/* Description (full width) */}
+      {!!project.description && (
+        <View style={styles.descriptionWrap}>
+          <View pointerEvents="none" style={styles.hiddenDescriptionMeasure} onLayout={handleDescriptionLayout}>
+            <Text style={styles.description}>
+              {project.description}
+            </Text>
+          </View>
+          <Text style={styles.description}>
+            {displayDescription}
+            {isCollapsed && (
+              <Text
+                style={styles.seeMoreLink}
+                onPress={() => setIsDescriptionExpanded(true)}
+              >
+                {SEE_MORE_LABEL}
+              </Text>
+            )}
+            {canExpandDescription && isDescriptionExpanded && (
+              <Text
+                style={styles.seeMoreLink}
+                onPress={() => setIsDescriptionExpanded(false)}
+              >
+                {' See less'}
+              </Text>
+            )}
+          </Text>
+        </View>
+      )}
 
       {/* Collaborators */}
       {acceptedCollabs.length > 0 && (
@@ -176,8 +233,15 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     gap: spacing.md,
   },
-  captionWrap: {
-    flex: 1,
+  descriptionWrap: {
+    paddingHorizontal: spacing.sm,
+    marginTop: 4,
+  },
+  hiddenDescriptionMeasure: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    opacity: 0,
   },
   actions: {
     flexDirection: 'row',
@@ -197,6 +261,7 @@ const styles = StyleSheet.create({
     minWidth: 14,
   },
   title: {
+    flex: 1,
     fontFamily: fonts.serif,
     fontSize: 16,
     color: colors.text.primary,
@@ -206,7 +271,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text.secondary,
     lineHeight: 20,
-    marginTop: 4,
+  },
+  seeMoreLink: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 14,
+    color: colors.accent,
   },
   collabRow: {
     flexDirection: 'row',

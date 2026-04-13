@@ -1,9 +1,13 @@
--- Artemys V1 Storage Buckets
--- Run this in the Supabase SQL Editor after schema.sql
+-- Artemys storage setup
+-- Creates buckets and the initial storage policies used before later hardening.
 
--- Create storage buckets
-insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
-insert into storage.buckets (id, name, public) values ('project-media', 'project-media', true);
+begin;
+
+insert into storage.buckets (id, name, public)
+values
+  ('avatars', 'avatars', true),
+  ('project-media', 'project-media', true)
+on conflict (id) do nothing;
 
 update storage.buckets
 set
@@ -25,7 +29,6 @@ set
   ]
 where id = 'project-media';
 
--- Avatars: anyone can view, authenticated users can upload/update their own
 create policy "Avatar images are publicly accessible"
   on storage.objects for select
   using (
@@ -61,7 +64,6 @@ create policy "Users can update their own avatar"
     and lower(storage.filename(name)) = 'avatar.' || lower(storage.extension(name))
   );
 
--- Project media: anyone can view, authenticated users can upload to their own folder
 create policy "Project media is publicly accessible"
   on storage.objects for select
   using (
@@ -137,3 +139,5 @@ create policy "Users can delete their own project media"
         and user_id = auth.uid()
     )
   );
+
+commit;

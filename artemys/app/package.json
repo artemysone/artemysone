@@ -7,6 +7,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "db:push": "npx supabase db push --linked",
+    "db:push:dry": "npx supabase db push --linked --dry-run",
+    "db:reset": "npx supabase db reset",
     "typecheck": "tsc --noEmit",
     "audit:prod": "npm audit --omit=dev",
     "check": "npm run typecheck && npm run audit:prod"

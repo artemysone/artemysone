@@ -20,6 +20,7 @@ import {
   SourceSerif4_600SemiBold,
   SourceSerif4_700Bold,
 } from '@expo-google-fonts/source-serif-4';
+import { Corinthia_400Regular } from '@expo-google-fonts/corinthia';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 export { ErrorBoundary } from 'expo-router';
@@ -89,6 +90,7 @@ export default function RootLayout() {
     SourceSerif4_400Regular,
     SourceSerif4_600SemiBold,
     SourceSerif4_700Bold,
+    Corinthia_400Regular,
   });
 
   useEffect(() => {

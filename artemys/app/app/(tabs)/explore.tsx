@@ -482,6 +482,7 @@ const styles = StyleSheet.create({
   searchBarContainer: {
     paddingHorizontal: HORIZONTAL_PAD,
     paddingBottom: spacing.md,
+    marginTop: spacing.sm,
   },
   searchBar: {
     flexDirection: 'row',

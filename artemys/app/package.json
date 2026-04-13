@@ -16,9 +16,11 @@
   },
   "dependencies": {
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
+    "@expo-google-fonts/corinthia": "^0.4.2",
     "@expo-google-fonts/dm-sans": "^0.4.2",
     "@expo-google-fonts/source-serif-4": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
+    "@react-native-masked-view/masked-view": "0.3.2",
     "@react-navigation/native": "^7.1.8",
     "@supabase/supabase-js": "^2.102.1",
     "expo": "~54.0.33",

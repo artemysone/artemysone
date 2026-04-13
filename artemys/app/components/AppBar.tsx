@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
+import { BrandWordmark } from './BrandWordmark';
 
 interface AppBarProps {
   title: string;
@@ -27,7 +28,7 @@ export function AppBar({
   return (
     <View style={styles.appBar}>
       <View pointerEvents="none" style={styles.titleContainer}>
-        <Text style={styles.title}>{title}</Text>
+        {title === 'artemys' ? <BrandWordmark /> : <Text style={styles.title}>{title}</Text>}
       </View>
 
       {leftIcon ? (
@@ -62,7 +63,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.bg,
     minHeight: 56,
   },

@@ -8,4 +8,5 @@ export const fonts = {
   body: 'DMSans_400Regular',
   bodyMedium: 'DMSans_500Medium',
   bodySemiBold: 'DMSans_600SemiBold',
+  brandScript: 'Corinthia_400Regular',
 };

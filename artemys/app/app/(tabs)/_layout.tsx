@@ -1,13 +1,25 @@
-import { Tabs } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { Tabs, usePathname } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { getUnreadCount } from '@/services/notifications';
 import { Avatar } from '@/components/Avatar';
 import { colors } from '@/constants/Colors';
 import { fonts } from '@/constants/Typography';
 
 export default function TabLayout() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
+  const pathname = usePathname();
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    getUnreadCount(user.id)
+      .then((count) => setHasUnread(count > 0))
+      .catch(() => {});
+  }, [user, pathname]);
+
   return (
     <Tabs
       screenOptions={{
@@ -59,7 +71,10 @@ export default function TabLayout() {
           title: 'Alerts',
           tabBarIcon: ({ color, size }) => (
             <View style={styles.labeledTab}>
-              <Ionicons name="notifications-outline" size={size} color={color} />
+              <View>
+                <Ionicons name="notifications-outline" size={size} color={color} />
+                {hasUnread && <View style={styles.badge} />}
+              </View>
               <Text style={[styles.tabLabel, { color }]}>Alerts</Text>
             </View>
           ),
@@ -130,6 +145,15 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     borderRadius: 99,
     padding: 1.5,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
   },
   createButton: {
     width: 40,

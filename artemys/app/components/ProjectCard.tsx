@@ -64,45 +64,45 @@ export const ProjectCard = memo(function ProjectCard({
         onPress={onPress}
       />
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <Pressable style={styles.actionBtn} onPress={onLike}>
-          <Ionicons
-            name={project.user_has_liked ? 'heart' : 'heart-outline'}
-            size={22}
-            color={project.user_has_liked ? colors.liked : colors.text.primary}
-          />
-          <Text style={styles.actionCount}>
-            {project.like_count > 0 ? formatCount(project.like_count) : ' '}
-          </Text>
-        </Pressable>
-        <Pressable style={styles.actionBtn} onPress={onPress}>
-          <Ionicons
-            name="chatbubble-outline"
-            size={20}
-            color={colors.text.primary}
-          />
-          <Text style={styles.actionCount}>
-            {project.comment_count > 0 ? formatCount(project.comment_count) : ' '}
-          </Text>
-        </Pressable>
-        <Pressable style={styles.actionBtn} onPress={onShare}>
-          <Ionicons
-            name="share-outline"
-            size={20}
-            color={colors.text.primary}
-          />
-        </Pressable>
-      </View>
-
-      {/* Caption */}
-      <View style={styles.captionWrap}>
-        <Text style={styles.title}>{project.title}</Text>
-        {!!project.description && (
-          <Text style={styles.description} numberOfLines={3}>
-            {project.description}
-          </Text>
-        )}
+      {/* Caption + Actions row */}
+      <View style={styles.captionActionsRow}>
+        <View style={styles.captionWrap}>
+          <Text style={styles.title}>{project.title}</Text>
+          {!!project.description && (
+            <Text style={styles.description} numberOfLines={2}>
+              {project.description}
+            </Text>
+          )}
+        </View>
+        <View style={styles.actions}>
+          <Pressable style={styles.actionBtn} onPress={onLike}>
+            <Ionicons
+              name={project.user_has_liked ? 'heart' : 'heart-outline'}
+              size={22}
+              color={project.user_has_liked ? colors.liked : colors.text.primary}
+            />
+            <Text style={styles.actionCount}>
+              {project.like_count > 0 ? formatCount(project.like_count) : ' '}
+            </Text>
+          </Pressable>
+          <Pressable style={styles.actionBtn} onPress={onPress}>
+            <Ionicons
+              name="chatbubble-outline"
+              size={20}
+              color={colors.text.primary}
+            />
+            <Text style={styles.actionCount}>
+              {project.comment_count > 0 ? formatCount(project.comment_count) : ' '}
+            </Text>
+          </Pressable>
+          <Pressable style={styles.actionBtn} onPress={onShare}>
+            <Ionicons
+              name="share-outline"
+              size={20}
+              color={colors.text.primary}
+            />
+          </Pressable>
+        </View>
       </View>
 
       {/* Collaborators */}
@@ -168,28 +168,33 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 1,
   },
+  captionActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+    paddingTop: 8,
+    gap: spacing.md,
+  },
+  captionWrap: {
+    flex: 1,
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: FEED_CONTENT_PAD,
-    paddingTop: 8,
     gap: 10,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    padding: 2,
+    paddingVertical: 2,
   },
   actionCount: {
     fontFamily: fonts.bodyMedium,
     fontSize: 13,
     color: colors.text.primary,
     minWidth: 14,
-  },
-  captionWrap: {
-    paddingHorizontal: FEED_CONTENT_PAD,
-    marginTop: 6,
   },
   title: {
     fontFamily: fonts.serif,

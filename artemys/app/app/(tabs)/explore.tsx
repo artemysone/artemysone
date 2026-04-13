@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { AppBar } from '@/components/AppBar';
@@ -144,17 +144,32 @@ export default function ExploreScreen() {
     setNewItems(projects.slice(4));
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        await fetchExploreData();
-      } catch (err) {
-        console.error('Failed to load explore data:', err);
-      } finally {
-        setLoading(false);
+  const hasLoadedOnce = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+
+      if (!hasLoadedOnce.current) {
+        setLoading(true);
       }
-    })();
-  }, [fetchExploreData]);
+
+      fetchExploreData()
+        .catch((err) => {
+          console.error('Failed to load explore data:', err);
+        })
+        .finally(() => {
+          if (mounted) {
+            setLoading(false);
+            hasLoadedOnce.current = true;
+          }
+        });
+
+      return () => {
+        mounted = false;
+      };
+    }, [fetchExploreData]),
+  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFeed, getDiscoverFeed, toggleLike, toggleFollow } from '@/services/feed';
 import { AppBar } from '@/components/AppBar';
@@ -30,6 +30,7 @@ export default function FeedScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [isDiscover, setIsDiscover] = useState(false);
   const [initialLoadError, setInitialLoadError] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
   const loadFeed = useCallback(
     async (
@@ -67,14 +68,31 @@ export default function FeedScreen() {
     [user, isDiscover],
   );
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+
+      setPage(0);
+      setHasMore(true);
+      setIsDiscover(false);
       setInitialLoadError(false);
-      await loadFeed(0, true, undefined, true);
-      setLoading(false);
-    })();
-  }, [loadFeed]);
+
+      if (!hasLoadedOnce.current) {
+        setLoading(true);
+      }
+
+      loadFeed(0, true, false, !hasLoadedOnce.current).finally(() => {
+        if (mounted) {
+          setLoading(false);
+          hasLoadedOnce.current = true;
+        }
+      });
+
+      return () => {
+        mounted = false;
+      };
+    }, [loadFeed]),
+  );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

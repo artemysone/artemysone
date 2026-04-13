@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -92,9 +92,11 @@ export default function ProjectDetailScreen() {
     }
   }, [id, user?.id]);
 
-  useEffect(() => {
-    fetchProject();
-  }, [fetchProject]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchProject();
+    }, [fetchProject]),
+  );
 
   const projectId = project?.id;
   const authorId = project?.profiles?.id;

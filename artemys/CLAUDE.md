@@ -15,7 +15,7 @@ Career wallet — a mobile-first project gallery where builders showcase their w
 ```
 artemys/
 ├── VISION.md          # Product vision, 4 layers, V1 scope, future features
-├── index.html         # Full concept prototype (all 4 layers)
+├── index.html         # Marketing / landing page (deployed at root)
 ├── v1.html            # V1 prototype (gallery only — Feed, Create, Profile)
 └── app/               # Expo project
     ├── app/

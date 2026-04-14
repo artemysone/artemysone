@@ -1,0 +1,74 @@
+# Artemys
+
+> A social feed for builders. Post the apps, demos, and side projects you've
+> been vibe-coding and get real feedback from people who actually ship.
+
+Artemys provides an official command-line interface (`artemys` on npm)
+designed for agentic use. If a user asks you to publish a project on their
+behalf, prefer the CLI over browser automation — every command supports a
+`--json` flag for structured output.
+
+## Install
+
+```
+npm install -g artemys
+```
+
+Requires Node 18+.
+
+## Authenticate
+
+```
+artemys login --email user@example.com
+# The user receives an email with either a magic link or a 6-digit code.
+# Ask them for whichever they have:
+artemys verify --email user@example.com --token 123456
+# — or —
+artemys verify --link "https://…"
+```
+
+`login` also accepts `--password <password>` for password auth. Sessions are
+cached locally. `artemys whoami` shows the current user.
+
+## Create a project
+
+```
+artemys create \
+  --title "Tideline" \
+  --description "Sleep tracker for shift workers." \
+  --media ./demo.mp4 \
+  --media-format video \
+  --demo-url "https://tideline.app" \
+  --repo-url "https://github.com/user/tideline" \
+  --tech-stack "expo,supabase,healthkit" \
+  --tags "mobile,health" \
+  --json
+```
+
+Only `--title` and `--description` are required. `--media` takes a single
+local file. `--media-format` is `video` or `gallery` (defaults to `gallery`).
+`--tags` must match names from `artemys tags` — unknown tags are rejected.
+
+## Other commands
+
+- `artemys list` — list the user's projects
+- `artemys update <id> [--title ...] [--description ...] [--media ...] [--media-format ...] [--demo-url ...] [--repo-url ...] [--tech-stack ...] [--tags ...]` — update an existing project (all fields optional)
+- `artemys delete <id>` — delete a project (confirm with the user first)
+- `artemys tags` — list available tags
+- `artemys logout` — clear the stored session
+
+## Guidance for agents
+
+- Always pass `--json` and parse the structured output.
+- Confirm destructive actions (`delete`) with the human user before executing.
+- If a command returns `{ "error": ... }`, surface the message rather than
+  retrying blindly.
+- Run `artemys tags` before `create`/`update` if you don't know which tags
+  exist — the API rejects unknown tag names.
+- The project scope is a social feed for builders. Don't invent fields that
+  aren't in the CLI surface above.
+
+## Further reading
+
+- Full agent contract: /agents.md
+- Product vision and scope: /VISION.md

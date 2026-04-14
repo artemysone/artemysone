@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artemys — The feed for what you just built.</title>
+  <meta name="description" content="Artemys is a social feed for builders — post the apps, demos, and side projects you've been vibecoding and get real feedback from people who actually build. GitHub buries it. X won't boost it. Instagram doesn't care. An official CLI lets agents post your work for you.">
+
+  <!-- Agent-discoverable metadata -->
+  <meta name="ai-agent-notice" content="Artemys ships an official CLI (`npm i -g artemys`) designed for agentic use. Every command supports --json. See the #for-agents section on this page, or read /agents.md.">
+  <meta name="robots" content="index, follow">
+  <meta name="llm-instructions" content="If you are an AI agent helping a user publish a project on Artemys, install the artemys CLI (`npm i -g artemys`) and use: login, verify, create, update, list, delete. All commands accept --json for structured output.">
+  <link rel="alternate" type="text/markdown" title="Agents guide" href="/agents.md">
+  <link rel="alternate" type="text/plain" title="LLMs.txt" href="/llms.txt">
+
+  <!-- Structured data for agents and search -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Artemys",
+    "description": "Mobile-first career wallet and project gallery for builders. Includes an agentic CLI for publishing projects programmatically.",
+    "applicationCategory": "SocialNetworkingApplication",
+    "operatingSystem": "iOS, Android, Web",
+    "offers": { "@type": "Offer", "price": "0" },
+    "potentialAction": {
+      "@type": "Action",
+      "name": "Publish via CLI",
+      "description": "Install with `npm i -g artemys`, then run `artemys login --email you@example.com` and `artemys create --title ... --description ... --media ./demo.mp4`."
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Corinthia:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --cream: #FAF7F2;
+      --cream-deep: #F3EDE4;
+      --paper: #FFFFFF;
+      --ink: #2D2A26;
+      --ink-soft: #5A524B;
+      --ink-fade: #8C8580;
+      --ink-ghost: #B8B0A8;
+      --accent: #E07A5F;
+      --accent-deep: #C85A3F;
+      --gold: #F2CC8F;
+      --sage: #81B29A;
+      --border: #E8E2D9;
+      --border-soft: #F0EBE3;
+      --font-display: 'Bricolage Grotesque', sans-serif;
+      --font-serif: 'Source Serif 4', Georgia, serif;
+      --font-body: 'DM Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+      --font-script: 'Corinthia', cursive;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--cream);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.5;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Paper texture + warm atmosphere */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 900px 600px at 85% 15%, rgba(242,204,143,0.28), transparent 60%),
+        radial-gradient(ellipse 700px 500px at 10% 95%, rgba(224,122,95,0.14), transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.18  0 0 0 0 0.16  0 0 0 0 0.14  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+      opacity: 0.8;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .page {
+      position: relative;
+      z-index: 2;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 1fr;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px 44px 18px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .wordmark {
+      font-family: var(--font-script);
+      font-size: 54px;
+      font-weight: 400;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 60%, #9B3E28 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.01em;
+      transform: translateY(6px);
+    }
+    .brand-tag {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--ink-fade);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding-bottom: 4px;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    nav .nav-link {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      transition: color 0.2s, background 0.2s;
+    }
+    nav .nav-link:hover { color: var(--ink); background: rgba(45,42,38,0.04); }
+    .signup-btn {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      background: var(--ink);
+      color: var(--cream);
+      border: none;
+      border-radius: 999px;
+      padding: 11px 20px 11px 22px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+      box-shadow: 0 8px 20px -10px rgba(45,42,38,0.5);
+    }
+    .signup-btn:hover {
+      background: var(--accent-deep);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px -10px rgba(200,90,63,0.5);
+    }
+    .signup-btn .arrow {
+      display: inline-block;
+      transition: transform 0.25s;
+    }
+    .signup-btn:hover .arrow { transform: translateX(3px); }
+
+    /* ── Hero ── */
+    main.hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 0;
+      align-items: center;
+      padding: 12px 0 4px;
+      min-height: 0;
+    }
+
+    .phone-stage { justify-content: flex-start; }
+
+    .copy {
+      max-width: 760px;
+      margin-left: auto;
+      padding-right: 24px;
+      animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-fade);
+      padding: 7px 14px 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.6);
+      backdrop-filter: blur(6px);
+    }
+    .eyebrow::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--sage);
+      box-shadow: 0 0 0 3px rgba(129,178,154,0.2);
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(48px, 6.2vw, 86px);
+      font-weight: 500;
+      line-height: 0.98;
+      letter-spacing: -0.03em;
+      margin: 22px 0 22px;
+      color: var(--ink);
+    }
+    h1 em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 500;
+      color: var(--accent-deep);
+      position: relative;
+      display: inline-block;
+    }
+    h1 .underlined {
+      position: relative;
+    }
+    h1 .underlined svg {
+      position: absolute;
+      left: -4%;
+      bottom: -14px;
+      width: 108%;
+      height: 22px;
+      stroke: var(--accent);
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      pointer-events: none;
+      animation: drawLine 1.2s 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+    }
+
+    .sub {
+      font-family: var(--font-serif);
+      font-size: 19px;
+      line-height: 1.55;
+      color: var(--ink-soft);
+      max-width: 520px;
+      margin-bottom: 32px;
+    }
+    .sub strong { font-weight: 600; color: var(--ink); }
+    .sub .brand-inline {
+      font-family: var(--font-script);
+      font-weight: 400;
+      font-size: 1.9em;
+      line-height: 0.9;
+      background: linear-gradient(90deg, #D4607A, #E89860);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.01em;
+      padding: 0 0.06em;
+      vertical-align: 0;
+    }
+    .brand-script {
+      display: block;
+      font-family: var(--font-script);
+      font-size: 64px;
+      line-height: 1.4;
+      font-weight: 400;
+      background: linear-gradient(90deg, #D4607A, #E89860);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.01em;
+      padding: 4px 0;
+      margin-bottom: 4px;
+      overflow: visible;
+    }
+
+    .ctas {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .cta-primary {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 26px 16px 28px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+      box-shadow: 0 12px 32px -12px rgba(224,122,95,0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    .cta-primary:hover {
+      background: var(--accent-deep);
+      transform: translateY(-1px);
+      box-shadow: 0 16px 40px -12px rgba(200,90,63,0.65), inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    .cta-primary svg { width: 18px; height: 18px; }
+    .cta-ghost {
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 4px;
+      border-bottom: 1.5px dotted var(--ink-ghost);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .cta-ghost:hover { color: var(--accent-deep); border-color: var(--accent); }
+
+    .proof {
+      margin-top: 30px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 13px;
+      color: var(--ink-fade);
+    }
+    .proof .stack {
+      display: flex;
+    }
+    .proof .stack .dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--cream);
+      margin-left: -8px;
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .proof .stack .dot:first-child { margin-left: 0; }
+    .proof .stack .d1 { background: linear-gradient(135deg, #E07A5F, #F2CC8F); }
+    .proof .stack .d2 { background: linear-gradient(135deg, #81B29A, #3D5A4F); }
+    .proof .stack .d3 { background: linear-gradient(135deg, #9B6B9E, #4A3F6B); }
+    .proof .stack .d4 { background: linear-gradient(135deg, #2D2A26, #5A524B); color: var(--cream); }
+
+    /* ── Phone stage ── */
+    .phone-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 0;
+      height: 100%;
+      animation: rise 0.9s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .phone-stage::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 480px;
+      height: 480px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(242,204,143,0.5), rgba(224,122,95,0.18) 40%, transparent 70%);
+      transform: translate(-50%, -50%);
+      filter: blur(20px);
+      z-index: 0;
+    }
+
+    .phone {
+      position: relative;
+      z-index: 2;
+      width: 340px;
+      height: 700px;
+      border-radius: 50px;
+      background: #0E0C0A;
+      padding: 7px;
+      box-shadow:
+        0 40px 80px -20px rgba(45,42,38,0.35),
+        0 18px 40px -12px rgba(45,42,38,0.25),
+        inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 47px;
+      background: var(--cream);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .island {
+      width: 100px; height: 28px;
+      background: #000;
+      border-radius: 18px;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+    .mini-status {
+      height: 46px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 22px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+      flex-shrink: 0;
+    }
+    .mini-status svg { width: 13px; height: 13px; }
+    .mini-status .icons { display: flex; gap: 4px; align-items: center; }
+
+    .mini-appbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 16px 6px;
+      min-height: 48px;
+    }
+    .mini-appbar .mini-logo {
+      font-family: var(--font-script);
+      font-size: 36px;
+      line-height: 1.2;
+      padding: 0 4px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    .mini-post {
+      margin: 0;
+      background: var(--cream);
+      overflow: hidden;
+    }
+    .mini-post-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+    }
+    .mini-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #E8E2D9 url('assets/ava-avatar.jpg') center/cover no-repeat;
+      flex-shrink: 0;
+    }
+    .mini-userinfo { flex: 1; min-width: 0; }
+    .mini-name {
+      font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .mini-name svg { width: 12px; height: 12px; color: #4A9EFF; }
+    .mini-meta { font-size: 11px; color: var(--ink-fade); margin-top: 1px; }
+
+    .mini-media {
+      width: 100%;
+      aspect-ratio: 4/5;
+      position: relative;
+      background: #0E0C0A;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .mini-media-inner {
+      flex: 1;
+      background:
+        radial-gradient(circle at 20% 85%, rgba(242,204,143,0.18), transparent 50%),
+        radial-gradient(circle at 80% 15%, rgba(224,122,95,0.22), transparent 50%),
+        linear-gradient(180deg, #1a1714 0%, #0E0C0A 100%);
+      padding: 16px 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .mini-media-chrome {
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: var(--font-script);
+      font-size: 22px;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      margin-bottom: 2px;
+    }
+    .mini-media-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--cream);
+      letter-spacing: -0.01em;
+    }
+    .mini-media-search {
+      background: rgba(250,247,242,0.08);
+      border: 1px solid rgba(250,247,242,0.12);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: rgba(250,247,242,0.4);
+      font-size: 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .mini-media-search svg { width: 10px; height: 10px; }
+    .mini-media-chips {
+      display: flex; gap: 5px;
+      font-family: var(--font-body);
+      font-size: 9.5px;
+      font-weight: 500;
+    }
+    .mini-media-chip {
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(250,247,242,0.08);
+      color: rgba(250,247,242,0.6);
+      white-space: nowrap;
+    }
+    .mini-media-chip.active {
+      background: var(--cream);
+      color: var(--ink);
+    }
+    .mini-media-section {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cream);
+      margin-top: 2px;
+    }
+    .mini-media-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      flex: 1;
+      min-height: 0;
+    }
+    .mini-media-tile {
+      border-radius: 10px;
+      padding: 8px 9px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      position: relative;
+      overflow: hidden;
+    }
+    .mini-tile-name {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      line-height: 1.1;
+    }
+    .mini-tile-handle {
+      font-family: var(--font-body);
+      font-size: 8.5px;
+      color: rgba(255,255,255,0.75);
+      margin-top: 1px;
+    }
+    .t-synth { background: linear-gradient(135deg, #E91E9C 0%, #6B1FB0 100%); }
+    .t-canopy { background: linear-gradient(135deg, #2AB09E 0%, #0E4D54 100%); }
+    .t-solder { background: linear-gradient(135deg, #F27B3D 0%, #BF4A2A 100%); }
+    .t-mono { background: linear-gradient(135deg, #464E5E 0%, #1C1F2A 100%); }
+
+    .mini-caption-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px 0;
+      gap: 10px;
+    }
+    .mini-title {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mini-actions {
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+    }
+    .mini-actions svg { width: 18px; height: 18px; color: var(--ink); }
+    .mini-action { display: flex; align-items: center; gap: 3px; }
+    .mini-action-count { font-family: var(--font-body); font-size: 11px; color: var(--ink); font-weight: 500; }
+    .mini-actions .liked svg { fill: #E25555; color: #E25555; }
+
+    .mini-desc {
+      padding: 4px 14px 0;
+      font-family: var(--font-body);
+      font-size: 11.5px;
+      color: var(--ink-soft);
+      line-height: 1.45;
+    }
+    .mini-desc .see-more {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .mini-desc .ellipsis { color: var(--ink); }
+
+    .mini-tabbar {
+      margin-top: auto;
+      display: flex;
+      padding: 8px 0 14px;
+      border-top: 1px solid var(--border);
+      background: var(--cream);
+    }
+    .mini-tab {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 2px;
+      color: var(--ink-ghost);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .mini-tab.active { color: var(--accent); }
+    .mini-tab svg { width: 22px; height: 22px; }
+    .mini-tab.create { justify-content: center; }
+    .mini-tab.create svg { width: 32px; height: 32px; color: white; background: var(--accent); border-radius: 9px; padding: 4px; box-shadow: 0 4px 10px -2px rgba(224,122,95,0.45); }
+    .mini-tab .tab-avatar {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: #E8E2D9 url('assets/ava-avatar.jpg') center/cover no-repeat;
+      border: 1.5px solid transparent;
+    }
+
+    /* Floating sticker */
+    .sticker {
+      position: absolute;
+      z-index: 4;
+      padding: 10px 14px 12px;
+      background: var(--gold);
+      color: var(--ink);
+      border-radius: 8px;
+      box-shadow: 0 10px 24px -6px rgba(45,42,38,0.25);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
+      transform: rotate(6deg);
+      max-width: 180px;
+    }
+    .sticker::before {
+      content: '';
+      position: absolute;
+      top: -6px; right: 18px;
+      width: 28px; height: 10px;
+      background: rgba(250,247,242,0.5);
+      border-radius: 1px;
+      transform: rotate(-6deg);
+    }
+    .sticker strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 3px;
+      letter-spacing: -0.01em;
+    }
+    .sticker-tl { top: 14%; left: -6%; transform: rotate(-7deg); }
+    .sticker-tl::before { left: 18px; right: auto; transform: rotate(6deg); }
+    .sticker-br { bottom: 10%; right: -2%; }
+
+    /* ── For-agents link ── */
+    .for-agents {
+      position: fixed;
+      right: 20px;
+      bottom: 16px;
+      z-index: 5;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--ink-fade);
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .for-agents:hover {
+      color: var(--ink);
+      background: rgba(45,42,38,0.04);
+    }
+
+    /* Corner meta */
+    .corner-meta {
+      position: fixed;
+      left: 44px;
+      bottom: 18px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--ink-fade);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: none;
+    }
+
+    /* ── Animations ── */
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes drawLine {
+      from { stroke-dasharray: 420; stroke-dashoffset: 420; }
+      to { stroke-dasharray: 420; stroke-dashoffset: 0; }
+    }
+
+    /* ── Responsive (keeps single viewport on desktop, graceful on narrow) ── */
+    @media (max-width: 1100px) {
+      .page { padding: 18px 28px 14px; }
+      main.hero { grid-template-columns: 1fr 1fr; gap: 0; }
+      .phone { width: 340px; height: 700px; }
+      h1 { font-size: clamp(42px, 6vw, 68px); }
+    }
+    @media (max-width: 860px) {
+      body { overflow-y: auto; }
+      .page { height: auto; min-height: 100vh; padding: 20px; }
+      main.hero { grid-template-columns: 1fr; gap: 30px; }
+      .phone-stage { order: -1; }
+      .phone { transform: rotate(0); }
+      .phone-stage::before { right: 6%; top: 2%; }
+      h1 { font-size: 44px; }
+      .wordmark { font-size: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+
+    <main class="hero">
+
+      <section class="copy">
+        <h1>
+          Post the project<br>
+          you just
+          <span class="underlined">
+            <em>built.</em>
+            <svg viewBox="0 0 300 22" preserveAspectRatio="none">
+              <path d="M4 14 Q 80 3, 150 11 T 296 7" />
+            </svg>
+          </span>
+        </h1>
+
+        <p class="sub">
+          Your demos, prototypes, and late-night vibe-coded side projects deserve a feed. <span class="brand-inline">Artemys</span> is where builders show what they're making — and get real feedback from people who actually ship.
+        </p>
+
+        <div class="ctas">
+          <button class="cta-primary" id="signup-main">
+            Claim your handle
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+          <a class="cta-ghost" href="#signin">I already have an account</a>
+        </div>
+
+      </section>
+
+      <section class="phone-stage" aria-label="Artemys mobile app preview">
+
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="mini-status">
+              <span>9:41</span>
+              <div class="icons">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 11h2v3H1zm4-2h2v5H5zm4-3h2v8H9zm4-4h2v12h-2z"/></svg>
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a8 8 0 0 0-5.66 2.34l1.41 1.41A6 6 0 0 1 8 5a6 6 0 0 1 4.24 1.75l1.41-1.41A8 8 0 0 0 8 3zm0 4a4 4 0 0 0-2.83 1.17l1.41 1.41A2 2 0 0 1 8 9a2 2 0 0 1 1.41.58l1.41-1.41A4 4 0 0 0 8 7zm0 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/></svg>
+                <svg viewBox="0 0 28 16" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1" width="22" height="14" rx="3"/><rect x="24" y="5" width="2" height="6" fill="currentColor" stroke="none"/><rect x="3" y="3" width="17" height="10" rx="1.5" fill="currentColor" stroke="none"/></svg>
+              </div>
+            </div>
+
+            <div class="mini-appbar">
+              <span class="mini-logo">Artemys</span>
+            </div>
+
+            <div class="mini-post">
+              <div class="mini-post-head">
+                <div class="mini-avatar"></div>
+                <div class="mini-userinfo">
+                  <div class="mini-name">Ava Moss
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.1 14.3-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4-7 7z"/></svg>
+                  </div>
+                  <div class="mini-meta">@ava · 3d</div>
+                </div>
+              </div>
+              <div class="mini-media">
+                <div class="mini-media-inner">
+                  <div class="mini-media-chrome">
+                    <span class="mini-media-title">Explore</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="rgba(250,247,242,0.55)" stroke-width="1.8" stroke-linecap="round" style="width:14px;height:14px;"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/></svg>
+                  </div>
+                  <div class="mini-media-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                    <span>Search projects, people, tags…</span>
+                  </div>
+                  <div class="mini-media-chips">
+                    <span class="mini-media-chip active">All</span>
+                    <span class="mini-media-chip">Design</span>
+                    <span class="mini-media-chip">Engineering</span>
+                    <span class="mini-media-chip">Music</span>
+                  </div>
+                  <div class="mini-media-section">Trending This Week</div>
+                  <div class="mini-media-grid">
+                    <div class="mini-media-tile t-synth">
+                      <div class="mini-tile-name">Synthwave</div>
+                      <div class="mini-tile-handle">@alexmori</div>
+                    </div>
+                    <div class="mini-media-tile t-canopy">
+                      <div class="mini-tile-name">Canopy</div>
+                      <div class="mini-tile-handle">@lenapark</div>
+                    </div>
+                    <div class="mini-media-tile t-solder">
+                      <div class="mini-tile-name">Solder</div>
+                      <div class="mini-tile-handle">@devraj</div>
+                    </div>
+                    <div class="mini-media-tile t-mono">
+                      <div class="mini-tile-name">Mono</div>
+                      <div class="mini-tile-handle">@sarahk</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mini-caption-row">
+                <div class="mini-title">artemys</div>
+                <div class="mini-actions">
+                  <span class="mini-action liked">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                  </span>
+                  <span class="mini-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/></svg>
+                    <span class="mini-action-count">1</span>
+                  </span>
+                  <span class="mini-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+                  </span>
+                </div>
+              </div>
+              <div class="mini-desc">
+                Instagram for Demos and New Projects — a career wallet for builders, not a résumé<span class="ellipsis">… </span><span class="see-more">See more</span>
+              </div>
+            </div>
+
+            <div class="mini-tabbar">
+              <div class="mini-tab active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 12 3l9 9M5 10v10h14V10"/></svg>
+                <span>Feed</span>
+              </div>
+              <div class="mini-tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span>Explore</span>
+              </div>
+              <div class="mini-tab create">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
+              <div class="mini-tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                <span>Alerts</span>
+              </div>
+              <div class="mini-tab">
+                <div class="tab-avatar"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <a class="for-agents" href="/llms.txt">for agents ↗</a>
+
+  </div>
+
+  <script>
+    // Simple wiring — swap to real auth routes when Supabase is in place.
+    document.querySelectorAll('#signup-main').forEach(el => {
+      el.addEventListener('click', () => {
+        window.location.href = '/signup';
+      });
+    });
+  </script>
+
+</body>
+</html>

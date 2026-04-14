@@ -48,7 +48,7 @@ export default function LoginScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.brand}>artemys</Text>
+            <Text style={styles.brand}>Artemys</Text>
             <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>Sign in to continue building</Text>
           </View>

@@ -243,7 +243,7 @@ export default function SignupScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={styles.brand}>artemys</Text>
+            <Text style={styles.brand}>Artemys</Text>
             <Text style={styles.title}>
               {step === 1 ? 'Create your account' : 'Set up your profile'}
             </Text>

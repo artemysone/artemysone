@@ -6,7 +6,7 @@ import { fonts } from '@/constants/Typography';
 export function BrandWordmark() {
   const textElement = (
     <Text style={{ fontFamily: fonts.brandScript, fontSize: 50, lineHeight: 52, textAlign: 'center' }}>
-      artemys
+      Artemys
     </Text>
   );
 
@@ -22,7 +22,7 @@ export function BrandWordmark() {
           WebkitTextFillColor: 'transparent',
         }}
       >
-        artemys
+        Artemys
       </Text>
     );
   }
@@ -35,7 +35,7 @@ export function BrandWordmark() {
         end={{ x: 1, y: 0 }}
       >
         <Text style={{ fontFamily: fonts.brandScript, fontSize: 50, lineHeight: 52, opacity: 0 }}>
-          artemys
+          Artemys
         </Text>
       </LinearGradient>
     </MaskedView>

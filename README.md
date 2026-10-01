@@ -1,6 +1,6 @@
 # Hi, I'm Jeff 👋
 
-**Technical recruiter turned builder** — 2 years deep into building with Coding Agents (Claude Code, Codex, OpenClaw) and shipping tools for the future of work.
+**AI Native Builder who spent 10 years in technical recruiting** — 2 years deep into building with Coding Agents (Claude Code, Codex, Grok Bot, Cursor) and shipping tools for the future of hiring.
 
 ![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Next.js](https://img.shields.io/badge/-Next.js-000000?style=flat-square&logo=next.js&logoColor=white)
@@ -8,7 +8,7 @@
 ![Vercel](https://img.shields.io/badge/-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
 ![Claude](https://img.shields.io/badge/-Claude-000000?style=flat-square&logo=anthropic&logoColor=white)
 
-> 10+ years in technical recruiting showed me the truth: 90% of hiring is busywork that should never involve a human. I'm building tools that prove it.
+> 10+ years in technical recruiting showed me the truth: 90% of hiring is busywork that should never involve a human. I'm building tools that revolutionalize hiring.
 
 ## What I'm Shipping
 
@@ -16,17 +16,17 @@
 
 ## What I'm Exploring
 
-<img src="./assets/coffeeshop-logo.svg" width="20" height="20" align="top" /> **[Coffee Shop](https://coffeeshop.sh)** — an agent-native professional network. The idea: a world where your AI agent maintains your profile, finds opportunities, handles screening, and only surfaces the conversations worth having. No job boards. No cold InMails. Just agents doing the work and humans making the meaningful calls.
+<img src="./assets/coffeeshop-logo.svg" width="20" height="20" align="top" /> **[Coffee Shop](https://coffeeshop.sh)** — an agent-native professional network. The idea: a world where your AI agent maintains your profile, finds opportunities, handles screening, and only surfaces the conversations worth having. No job boards. No applications. No cold InMails. Just agents doing the work and humans making the meaningful calls.
 
 ## What Drives Me
 
-- **AI-native development** — I build full products with Claude Code and agentic workflows. 8 months in, and the leverage is unreal.
+- **AI-native development** — I build full products with Claude Code and agentic workflows. 2 years in, and the leverage is unreal.
 - **Agent-first UX** — The best career tool is one you never open. Your agent handles discovery, applications, and communication while you focus on real decisions.
 - **The talent space needs new infrastructure** — not better versions of the same broken tools, but new systems built for agents from day one.
 
 ## Connect
 
-[![X](https://img.shields.io/badge/-@recruitergpt-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/artemysone)
+[![X](https://img.shields.io/badge/-@artemysone-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/artemysone)
 [![GitHub](https://img.shields.io/badge/-Follow-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/jeffreyblue)
 
 ---
